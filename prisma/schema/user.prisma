@@ -1,0 +1,32 @@
+enum Gender {
+    male
+    female
+    others
+}
+
+model User {
+    id          String       @id @default(uuid())
+    username    String       @unique
+    email       String       @unique
+    password    String
+    createdAt   DateTime     @default(now())
+    updatedAt   DateTime     @updatedAt
+    isVerified  Boolean      @default(false)
+    userProfile UserProfile?
+
+    @@map("users")
+}
+
+model UserProfile {
+    id         String   @id @default(uuid())
+    userId     String   @unique
+    firstName  String
+    middleName String?
+    lastName   String
+    gender     Gender
+    phone      String
+    birth      DateTime
+    user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map("userProfiles")
+}
