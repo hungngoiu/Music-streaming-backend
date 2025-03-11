@@ -49,8 +49,7 @@ export const authController = {
                 userProfile: {
                     ...omitPropsFromObject(userProfile, "birth"),
                     birth
-                },
-
+                }
             };
             const {
                 user: createdUser,

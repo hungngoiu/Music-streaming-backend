@@ -1,11 +1,9 @@
 import { passwordRegex, phoneRegex, usernameRegex } from "@/types/regex.js";
 import { z } from "zod";
-import { Gender} from "@prisma/client";
+import { Gender } from "@prisma/client";
 
 const userProfileSchema = z.object({
-    firstName: z.string().min(1, "Missing first name"),
-    lastName: z.string().min(1, "Missing last name"),
-    middleName: z.string().optional(),
+    name: z.string().min(1, "Missing name"),
     birth: z.coerce
         .string()
         .date("Invalid date format, must be YYYY-MM-DD")
@@ -35,13 +33,12 @@ const userProfileSchema = z.object({
     phone: z.string().regex(phoneRegex)
 });
 
-export const signUpSchema = z
-    .object({
-        username: z.string().regex(usernameRegex),
-        email: z.string().email("Must be an valid email"),
-        password: z.string().regex(passwordRegex),
-        userProfile: userProfileSchema
-    })
+export const signUpSchema = z.object({
+    username: z.string().regex(usernameRegex),
+    email: z.string().email("Must be an valid email"),
+    password: z.string().regex(passwordRegex),
+    userProfile: userProfileSchema
+});
 
 export const signInSchema = z.object({
     username: z.string().min(3, "Username must be at least 3 characters"),

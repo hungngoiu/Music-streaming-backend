@@ -57,11 +57,11 @@ export const authService: authServiceInterface = {
                     create: {
                         ...userProfile
                     }
-                },
+                }
             },
             {
                 include: {
-                    userProfile: true,
+                    userProfile: true
                 }
             }
         );

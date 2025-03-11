@@ -5,14 +5,12 @@ export type SignUpDto = {
     email: string;
     password: string;
     userProfile: {
-        firstName: string;
-        lastName: string;
-        middleName?: string;
+        name: string;
         gender: Gender;
         birth: Date;
         phone: string;
     };
-}
+};
 
 export type SignInDto = {
     username: string;

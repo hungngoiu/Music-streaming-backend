@@ -1,8 +1,6 @@
 import { Router } from "express";
 import authRouter from "./auth.route.js";
-import {
-    authRouteConfig,
-} from "@/configs/routes/index.js";
+import { authRouteConfig } from "@/configs/routes/index.js";
 import { requestLogger } from "@/utils/logger.js";
 
 export const rootRouter: Router = Router();
@@ -16,7 +14,7 @@ const apisConfigs: configProps[] = [
     {
         index: authRouteConfig.index,
         router: authRouter
-    },
+    }
 ];
 
 apisConfigs.forEach((config) => {
