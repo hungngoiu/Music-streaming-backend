@@ -1,14 +1,8 @@
-import { envConfig } from "@/configs/index.js";
+import { redisConfig } from "@/configs/redis.config.js";
 import logger from "@/utils/logger.js";
 import { createClient } from "redis";
 
-const client = createClient({
-    password: envConfig.REDIS_PASSWORD,
-    socket: {
-        host: envConfig.REDIS_HOST,
-        port: envConfig.REDIS_PORT
-    }
-});
+const client = createClient(redisConfig);
 
 export const connectRedis = async () => {
     try {

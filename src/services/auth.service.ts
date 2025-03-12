@@ -11,9 +11,9 @@ import { UserPayload } from "@/types/jwt.js";
 import { randomInt } from "crypto";
 import { sendMail } from "@/utils/mailer.js";
 import { redisService } from "./redis.service.js";
-import { namespaces } from "@/types/dto/index.js";
 import { timeToMs } from "@/utils/time.js";
 import { envConfig } from "@/configs/env.config.js";
+import { namespaces } from "@/configs/redis.config.js";
 interface authServiceInterface {
     signUp: (
         data: SignUpDto

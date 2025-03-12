@@ -1,0 +1,9 @@
+model Song {
+    id     String  @id @default(uuid())
+    name   String
+    url    String
+    UserId String?
+    User   User?   @relation(fields: [UserId], references: [id])
+
+    @@map("songs")
+}

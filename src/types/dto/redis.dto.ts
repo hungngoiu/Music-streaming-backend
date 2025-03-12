@@ -1,8 +1,4 @@
-export enum namespaces {
-    Verification = "verification",
-    JWT_Token_Blacklist = "blacklist",
-    JWT_Refresh_Token = "refresh_token"
-}
+import { namespaces } from "@/configs/redis.config.js";
 
 export type redisSetDto = {
     namespace: namespaces;
