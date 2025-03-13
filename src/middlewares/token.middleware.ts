@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from "express";
 import { StatusCodes } from "http-status-codes";
 import jwt from "jsonwebtoken";
 import { redisService } from "@/services/index.js";
-import { namespaces } from "@/types/dto/index.js";
+import { namespaces } from "@/configs/redis.config.js";
 
 export const verifyTokenMiddleware = (type: "at" | "rt") => {
     return async (req: Request, res: Response, next: NextFunction) => {

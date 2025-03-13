@@ -1,4 +1,5 @@
 export * from "./config.routes.auth.js";
+export * from "./config.routes.user.js";
 
 export const apiConfig = {
     api: "/api/v1",

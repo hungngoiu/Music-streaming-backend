@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc && tsc-alias",
-    "start": "node -r tsconfig-paths/register dist/index.js",
+    "start": "node -r tsconfig-paths/register --trace-deprecation dist/index.js",
     "start:dev": "npx nodemon",
     "lint": "npx eslint",
     "lint:fix": "npx eslint . --fix",
@@ -29,7 +29,7 @@
     "@types/nodemailer-express-handlebars": "^4.0.5",
     "@types/redis": "^4.0.11",
     "@types/swagger-ui-express": "^4.1.8",
-    "eslint": "^9.13.0",
+    "eslint": "^9.22.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-unused-imports": "^4.1.4",
     "globals": "^15.11.0",

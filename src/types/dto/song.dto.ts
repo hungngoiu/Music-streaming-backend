@@ -1,5 +1,3 @@
-export type createSong = {
-    name: string,
-    url: string,
-}
-
+export type createSongDto = {
+    name: string;
+};

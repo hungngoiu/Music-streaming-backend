@@ -1,11 +1,14 @@
-type FolderKeys = `${string}Folder`;
-
-interface BucketConfigs {
+interface bucketBaseConfigsInterface {
     name: string;
-    [key: FolderKeys]: string;
+    allowedExtension: string[];
 }
 
-export const audioBucketConfigs: BucketConfigs = {
-    name: "audio",
+interface audioBucketConfigsInterface extends bucketBaseConfigsInterface {
+    musicFolder: string;
+}
+
+export const audioBucketConfigs: audioBucketConfigsInterface = {
+    name: "audios",
+    allowedExtension: [".mp3"],
     musicFolder: "musics"
 };
