@@ -4,8 +4,7 @@ import { StatusCodes } from "http-status-codes";
 import { Request, Response } from "express";
 import { userController } from "@/controllers/user.controller.js";
 import { verifyTokenMiddleware } from "@/middlewares/token.middleware.js";
-import { singleFileUpload } from "@/middlewares/file.middleware.js";
-import { audioBucketConfigs } from "@/configs/storage.config.js";
+import { fieldsFileUpload } from "@/middlewares/file.middleware.js";
 const router = Router();
 
 router.get(userRouteConfig.status, (req: Request, res: Response) => {
@@ -18,9 +17,19 @@ router.get(userRouteConfig.status, (req: Request, res: Response) => {
 router.post(
     userRouteConfig.upload,
     verifyTokenMiddleware("at"),
-    singleFileUpload({
-        fieldName: "song",
-        allowedExtensions: audioBucketConfigs.allowedExtension
+    fieldsFileUpload({
+        fields: [
+            {
+                name: "audioFile",
+                maxCount: 1,
+                allowedExtensions: [".mp3", ".wav"]
+            },
+            {
+                name: "coverImage",
+                maxCount: 1,
+                allowedExtensions: [".jpg", ".jpeg", ".png"]
+            }
+        ]
     }),
     userController.upload
 );

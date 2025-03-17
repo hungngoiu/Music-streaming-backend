@@ -1,14 +1,22 @@
 interface bucketBaseConfigsInterface {
     name: string;
-    allowedExtension: string[];
 }
 
-interface audioBucketConfigsInterface extends bucketBaseConfigsInterface {
-    musicFolder: string;
+interface musicsBucketConfigsInterface extends bucketBaseConfigsInterface {
+    audioFolder: {
+        name: string;
+    };
+    coverFolder: {
+        name: string;
+    };
 }
 
-export const audioBucketConfigs: audioBucketConfigsInterface = {
-    name: "audios",
-    allowedExtension: [".mp3"],
-    musicFolder: "musics"
+export const musicsBucketConfigs: musicsBucketConfigsInterface = {
+    name: "musics",
+    audioFolder: {
+        name: "audio"
+    },
+    coverFolder: {
+        name: "covers"
+    }
 };

@@ -33,7 +33,7 @@ const startServer = async () => {
 
 const shutdownServer = async (server: Server, signal: string) => {
     try {
-        logger.warn(`Received ${signal}. Closing server...`);
+        logger.info(`Received ${signal}. Closing server...`);
         await server.close();
         await disconnectDbs();
         logger.info("Server and databases disconnected successfully.");

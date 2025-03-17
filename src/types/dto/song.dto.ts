@@ -1,3 +1,3 @@
-export type createSongDto = {
+export type CreateSongDto = {
     name: string;
 };

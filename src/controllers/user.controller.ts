@@ -10,27 +10,38 @@ export const userController = {
     upload: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const bodyData = req.body as z.infer<typeof uploadSongSchema>;
-            const { file, user } = req;
-            if (!file) {
+            const user = req.user;
+            const files = req.files as
+                | { [fieldname: string]: Express.Multer.File[] }
+                | undefined;
+            if (!files) {
                 throw new CustomError(
-                    "Must upload a file under field song",
+                    "No files uploaded",
                     StatusCodes.BAD_REQUEST
                 );
             }
-            const { song, url } = await songService.createSong(
-                bodyData,
-                user!.id,
-                file!
-            );
-            const message = url
+            const audioFile = files.audioFile[0];
+            const coverImage = files.coverImage[0];
+            const { song, audioUrl, coverImageUrl } =
+                await songService.createSong(
+                    bodyData,
+                    user!.id,
+                    audioFile,
+                    coverImage
+                );
+            const message = audioUrl
                 ? "Song uploaded successfully"
                 : "Song uploaded successfully, but failed to generate an url";
             res.status(StatusCodes.OK).json({
                 status: "success",
                 message: message,
                 data: {
-                    song: omitPropsFromObject(song, "path"),
-                    url: url
+                    song: omitPropsFromObject(song, [
+                        "audioFilePath",
+                        "coverImagePath"
+                    ]),
+                    audioUrl: audioUrl,
+                    coverImageUrl: coverImageUrl
                 }
             });
         } catch (err) {

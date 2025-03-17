@@ -1,8 +1,6 @@
 import supabaseClient from "@/databases/storage.js";
-import { CustomError } from "@/errors/CustomError.js";
 import logger from "@/utils/logger.js";
 import { randomUUID } from "crypto";
-import { StatusCodes } from "http-status-codes";
 import mime from "mime";
 
 export const storageService = {
@@ -22,19 +20,13 @@ export const storageService = {
         const { error } = await supabaseClient.storage
             .from(bucket)
             .upload(filePath, file.buffer, { contentType });
-
-        if (error) {
-            throw new CustomError(
-                error.message,
-                StatusCodes.INTERNAL_SERVER_ERROR
-            );
-        }
-
-        return filePath;
+        return { error, filePath };
     },
+
     deleteOne: async (bucket: string, filePath: string) => {
         return await supabaseClient.storage.from(bucket).remove([filePath]);
     },
+
     generateUrl: async (bucket: string, filePath: string) => {
         const { data, error } = await supabaseClient.storage
             .from(bucket)
