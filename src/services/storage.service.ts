@@ -1,25 +1,25 @@
 import supabaseClient from "@/databases/storage.js";
 import logger from "@/utils/logger.js";
 import { randomUUID } from "crypto";
-import mime from "mime";
-
+import { fileTypeFromBuffer } from "file-type";
+import { CustomError } from "@/errors/CustomError.js";
+import { StatusCodes } from "http-status-codes";
 export const storageService = {
-    uploadOne: async (
-        bucket: string,
-        folder: string,
-        file: Express.Multer.File
-    ) => {
-        const fileExt = file.originalname.split(".").pop();
-        const fileName = `${randomUUID()}.${fileExt}`;
+    uploadOne: async (bucket: string, folder: string, buffer: Buffer) => {
+        const fileType = await fileTypeFromBuffer(buffer);
+        if (!fileType) {
+            throw new CustomError(
+                "Cannot detect file type",
+                StatusCodes.INTERNAL_SERVER_ERROR
+            );
+        }
+        const { ext, mime } = fileType;
+        const fileName = `${randomUUID()}.${ext}`;
         const filePath = `${folder}/${fileName}`;
-
-        // Auto-detect MIME type
-        const contentType =
-            mime.lookup(file.originalname) || "application/octet-stream";
 
         const { error } = await supabaseClient.storage
             .from(bucket)
-            .upload(filePath, file.buffer, { contentType });
+            .upload(filePath, buffer, { contentType: mime });
         return { error, filePath };
     },
 

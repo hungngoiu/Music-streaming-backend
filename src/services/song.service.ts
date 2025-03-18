@@ -7,7 +7,7 @@ import { storageService } from "./storage.service.js";
 import { musicsBucketConfigs } from "@/configs/storage.config.js";
 import { songRepo } from "@/repositories/song.repo.js";
 import logger from "@/utils/logger.js";
-
+import sharp from "sharp";
 interface songServiceInterface {
     createSong: (
         data: CreateSongDto,
@@ -37,16 +37,24 @@ export const songService: songServiceInterface = {
             throw new CustomError("User not found", StatusCodes.NOT_FOUND);
         }
 
+        //Format the image before uploading
+        const coverImgBuffer = await sharp(coverImg.buffer)
+            .resize(1400, 1400, {
+                fit: "contain"
+            })
+            .png()
+            .toBuffer();
+
         const results = await Promise.all([
             storageService.uploadOne(
                 musicsBucketConfigs.name,
                 musicsBucketConfigs.audioFolder.name,
-                audioFile
+                audioFile.buffer
             ),
             storageService.uploadOne(
                 musicsBucketConfigs.name,
                 musicsBucketConfigs.coverFolder.name,
-                coverImg
+                coverImgBuffer
             )
         ]);
         if (results[0].error || results[1].error) {
