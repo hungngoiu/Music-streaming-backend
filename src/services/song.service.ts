@@ -1,12 +1,17 @@
 import { CustomError } from "@/errors/index.js";
 import { userRepo } from "@/repositories/user.repo.js";
-import { CreateSongDto } from "@/types/dto/song.dto.js";
+import {
+    CreateSongDto,
+    GetSongDto,
+    GetSongsDto
+} from "@/types/dto/song.dto.js";
 import { Song } from "@prisma/client";
 import { StatusCodes } from "http-status-codes";
 import { storageService } from "./storage.service.js";
 import { musicsBucketConfigs } from "@/configs/storage.config.js";
 import { songRepo } from "@/repositories/song.repo.js";
 import sharp from "sharp";
+import { omitPropsFromObject } from "@/utils/object.js";
 interface SongServiceInterface {
     createSong: (
         data: CreateSongDto,
@@ -18,6 +23,9 @@ interface SongServiceInterface {
         audioUrl: string | null;
         coverImageUrl: string | null;
     }>;
+    getSong: (filter: GetSongDto) => Promise<Song | null>;
+
+    getSongs: (args: GetSongsDto) => Promise<Song[]>;
 }
 
 export const songService: SongServiceInterface = {
@@ -65,42 +73,6 @@ export const songService: SongServiceInterface = {
         }
         const audioFilePath = filePaths[0];
         const coverImagePath = filePaths[1];
-        // const results = await Promise.all([
-        //     storageService.uploadOne(
-        //         musicsBucketConfigs.name,
-        //         musicsBucketConfigs.audioFolder.name,
-        //         audioFile.buffer
-        //     ),
-        //     storageService.uploadOne(
-        //         musicsBucketConfigs.name,
-        //         musicsBucketConfigs.coverFolder.name,
-        //         coverImgBuffer
-        //     )
-        // ]);
-        // if (results[0].error || results[1].error) {
-        //     const successUploadedFiles = results.filter((result) => {
-        //         return result.error == null;
-        //     });
-        //     successUploadedFiles.forEach(async (result) => {
-        //         const { error } = await storageService.deleteOne(
-        //             musicsBucketConfigs.name,
-        //             result.filePath
-        //         );
-        //         if (error) {
-        //             logger.warn(
-        //                 `Cannot delete ${result.filePath} in bucket ${musicsBucketConfigs.name}`
-        //             );
-        //             //TO-DO
-        //             //Perform an approach to retry delete this orphan file in the future
-        //         }
-        //     });
-        //     throw new CustomError(
-        //         "Error uploading files",
-        //         StatusCodes.INTERNAL_SERVER_ERROR
-        //     );
-        // }
-        // const audioFilePath = results[0].filePath;
-        // const coverImagePath = results[1].filePath;
         let song: Song;
         try {
             song = await songRepo.createOne({
@@ -114,35 +86,31 @@ export const songService: SongServiceInterface = {
                 musicsBucketConfigs.name,
                 filePaths
             );
-            // let { error } = await storageService.deleteOne(
-            //     musicsBucketConfigs.name,
-            //     audioFilePath
-            // );
-            // if (error) {
-            //     logger.error(
-            //         `Cannot delete ${audioFilePath} in bucket {musicsBucketConfigs.name}`
-            //     );
-            //     //TO-DO
-            //     //Perform an approach to retry delete this orphan file in the future
-            // }
-            // ({ error } = await storageService.deleteOne(
-            //     musicsBucketConfigs.name,
-            //     audioFilePath
-            // ));
-            // if (error) {
-            //     logger.error(
-            //         `Cannot delete ${audioFilePath} in bucket {musicsBucketConfigs.name}`
-            //     );
-            //     //TO-DO
-            //     //Perform an approach to retry delete this orphan file in the future
-            // }
             throw err;
         }
-
         const urls = await Promise.all([
             storageService.generateUrl(musicsBucketConfigs.name, audioFilePath),
             storageService.generateUrl(musicsBucketConfigs.name, coverImagePath)
         ]);
         return { song, audioUrl: urls[0], coverImageUrl: urls[1] };
+    },
+
+    getSong: (filter: GetSongDto): Promise<Song | null> => {
+        return songRepo.getOnebyFilter(filter);
+    },
+
+    getSongs: (args: GetSongsDto): Promise<Song[]> => {
+        const { options, name } = args;
+        const filter = omitPropsFromObject(args, ["options", "name"]);
+        const { limit = 10, offset = 0 } = options ?? { undefined };
+        return songRepo.getManyByFilter(
+            {
+                ...filter,
+                name: {
+                    search: name ? name.replace(" ", "&") : undefined
+                }
+            },
+            { take: limit <= 100 ? limit : 100, skip: offset }
+        );
     }
 };

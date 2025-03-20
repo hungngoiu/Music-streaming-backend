@@ -32,38 +32,49 @@ export const userRepo = {
     },
     update: (
         filter: Prisma.UserWhereUniqueInput,
-        data: Prisma.UserUpdateInput
+        data: Prisma.UserUpdateInput,
+        options?: Omit<Prisma.UserUpdateArgs, "where" | "data">
     ): Promise<User> => {
         return prismaClient.user.update({
             where: filter,
-            data: data
+            data: data,
+            ...options
         });
     },
 
     /* ------------------------------ User Profiles ----------------------------- */
 
     createProfile: (
-        data: Prisma.UserProfileCreateInput
+        data: Prisma.UserProfileCreateInput,
+        options?: Omit<Prisma.UserProfileCreateArgs, "data">
     ): Promise<UserProfile> => {
-        return prismaClient.userProfile.create({ data: data });
+        return prismaClient.userProfile.create({ data: data, ...options });
     },
+
     updateProfile: (
         filter: Prisma.UserProfileWhereUniqueInput,
-        data: Prisma.UserProfileUpdateInput
+        data: Prisma.UserProfileUpdateInput,
+        options?: Omit<Prisma.UserProfileUpdateArgs, "where" | "data">
     ) => {
         return prismaClient.userProfile.update({
             where: filter,
-            data: data
+            data: data,
+            ...options
         });
     },
     getOneProfileByfilter: (
-        filter: Prisma.UserProfileWhereInput
+        filter: Prisma.UserProfileWhereInput,
+        options?: Omit<Prisma.UserProfileFindFirstArgs, "where">
     ): Promise<UserProfile | null> => {
-        return prismaClient.userProfile.findFirst({ where: filter });
+        return prismaClient.userProfile.findFirst({
+            where: filter,
+            ...options
+        });
     },
     getAllProfileByFilter: (
-        filter: Prisma.UserProfileWhereInput
+        filter: Prisma.UserProfileWhereInput,
+        options?: Omit<Prisma.UserProfileFindManyArgs, "where">
     ): Promise<UserProfile[]> => {
-        return prismaClient.userProfile.findMany({ where: filter });
+        return prismaClient.userProfile.findMany({ where: filter, ...options });
     }
 };
