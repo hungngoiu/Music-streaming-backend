@@ -6,9 +6,8 @@ import { StatusCodes } from "http-status-codes";
 import { storageService } from "./storage.service.js";
 import { musicsBucketConfigs } from "@/configs/storage.config.js";
 import { songRepo } from "@/repositories/song.repo.js";
-import logger from "@/utils/logger.js";
 import sharp from "sharp";
-interface songServiceInterface {
+interface SongServiceInterface {
     createSong: (
         data: CreateSongDto,
         userId: string,
@@ -21,7 +20,7 @@ interface songServiceInterface {
     }>;
 }
 
-export const songService: songServiceInterface = {
+export const songService: SongServiceInterface = {
     createSong: async (
         data: CreateSongDto,
         userId: string,
@@ -45,42 +44,63 @@ export const songService: songServiceInterface = {
             .png()
             .toBuffer();
 
-        const results = await Promise.all([
-            storageService.uploadOne(
-                musicsBucketConfigs.name,
-                musicsBucketConfigs.audioFolder.name,
-                audioFile.buffer
-            ),
-            storageService.uploadOne(
-                musicsBucketConfigs.name,
-                musicsBucketConfigs.coverFolder.name,
-                coverImgBuffer
-            )
-        ]);
-        if (results[0].error || results[1].error) {
-            const successUploadedFiles = results.filter((result) => {
-                return result.error == null;
-            });
-            successUploadedFiles.forEach(async (result) => {
-                const { error } = await storageService.deleteOne(
-                    musicsBucketConfigs.name,
-                    result.filePath
-                );
-                if (error) {
-                    logger.error(
-                        `Cannot delete ${result.filePath} in bucket {musicsBucketConfigs.name}`
-                    );
-                    //TO-DO
-                    //Perform an approach to retry delete this orphan file in the future
+        const { success, filePaths } = await storageService.uploadMany(
+            musicsBucketConfigs.name,
+            [
+                {
+                    folder: musicsBucketConfigs.audioFolder.name,
+                    buffer: audioFile.buffer
+                },
+                {
+                    folder: musicsBucketConfigs.coverFolder.name,
+                    buffer: coverImgBuffer
                 }
-            });
+            ]
+        );
+        if (!success) {
             throw new CustomError(
-                "Error uploading files",
+                "Failed to upload files",
                 StatusCodes.INTERNAL_SERVER_ERROR
             );
         }
-        const audioFilePath = results[0].filePath;
-        const coverImagePath = results[1].filePath;
+        const audioFilePath = filePaths[0];
+        const coverImagePath = filePaths[1];
+        // const results = await Promise.all([
+        //     storageService.uploadOne(
+        //         musicsBucketConfigs.name,
+        //         musicsBucketConfigs.audioFolder.name,
+        //         audioFile.buffer
+        //     ),
+        //     storageService.uploadOne(
+        //         musicsBucketConfigs.name,
+        //         musicsBucketConfigs.coverFolder.name,
+        //         coverImgBuffer
+        //     )
+        // ]);
+        // if (results[0].error || results[1].error) {
+        //     const successUploadedFiles = results.filter((result) => {
+        //         return result.error == null;
+        //     });
+        //     successUploadedFiles.forEach(async (result) => {
+        //         const { error } = await storageService.deleteOne(
+        //             musicsBucketConfigs.name,
+        //             result.filePath
+        //         );
+        //         if (error) {
+        //             logger.warn(
+        //                 `Cannot delete ${result.filePath} in bucket ${musicsBucketConfigs.name}`
+        //             );
+        //             //TO-DO
+        //             //Perform an approach to retry delete this orphan file in the future
+        //         }
+        //     });
+        //     throw new CustomError(
+        //         "Error uploading files",
+        //         StatusCodes.INTERNAL_SERVER_ERROR
+        //     );
+        // }
+        // const audioFilePath = results[0].filePath;
+        // const coverImagePath = results[1].filePath;
         let song: Song;
         try {
             song = await songRepo.createOne({
@@ -90,28 +110,32 @@ export const songService: songServiceInterface = {
                 user: { connect: { id: userId } }
             });
         } catch (err) {
-            let { error } = await storageService.deleteOne(
+            await storageService.deleteMany(
                 musicsBucketConfigs.name,
-                audioFilePath
+                filePaths
             );
-            if (error) {
-                logger.error(
-                    `Cannot delete ${audioFilePath} in bucket {musicsBucketConfigs.name}`
-                );
-                //TO-DO
-                //Perform an approach to retry delete this orphan file in the future
-            }
-            ({ error } = await storageService.deleteOne(
-                musicsBucketConfigs.name,
-                audioFilePath
-            ));
-            if (error) {
-                logger.error(
-                    `Cannot delete ${audioFilePath} in bucket {musicsBucketConfigs.name}`
-                );
-                //TO-DO
-                //Perform an approach to retry delete this orphan file in the future
-            }
+            // let { error } = await storageService.deleteOne(
+            //     musicsBucketConfigs.name,
+            //     audioFilePath
+            // );
+            // if (error) {
+            //     logger.error(
+            //         `Cannot delete ${audioFilePath} in bucket {musicsBucketConfigs.name}`
+            //     );
+            //     //TO-DO
+            //     //Perform an approach to retry delete this orphan file in the future
+            // }
+            // ({ error } = await storageService.deleteOne(
+            //     musicsBucketConfigs.name,
+            //     audioFilePath
+            // ));
+            // if (error) {
+            //     logger.error(
+            //         `Cannot delete ${audioFilePath} in bucket {musicsBucketConfigs.name}`
+            //     );
+            //     //TO-DO
+            //     //Perform an approach to retry delete this orphan file in the future
+            // }
             throw err;
         }
 

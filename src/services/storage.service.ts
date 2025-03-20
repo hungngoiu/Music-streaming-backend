@@ -4,7 +4,47 @@ import { randomUUID } from "crypto";
 import { fileTypeFromBuffer } from "file-type";
 import { CustomError } from "@/errors/CustomError.js";
 import { StatusCodes } from "http-status-codes";
-export const storageService = {
+import { FileObject, StorageError } from "@supabase/storage-js";
+
+interface StorageServiceInterface {
+    uploadOne: (
+        bucket: string,
+        folder: string,
+        buffer: Buffer
+    ) => Promise<string>;
+    deleteOne: (bucket: string, filePath: string) => Promise<FileObject>;
+    uploadMany: (
+        bucket: string,
+        files: { folder: string; buffer: Buffer }[]
+    ) => Promise<
+        | {
+              success: true;
+              filePaths: string[];
+          }
+        | {
+              success: false;
+              filePaths: null;
+          }
+    >;
+    deleteMany: (
+        bucket: string,
+        filePaths: string[]
+    ) => Promise<
+        | {
+              success: true;
+              datas: FileObject[];
+              errors: null;
+          }
+        | {
+              success: false;
+              datas: null;
+              errors: StorageError[];
+          }
+    >;
+    generateUrl: (bucket: string, filePath: string) => Promise<string | null>;
+}
+
+export const storageService: StorageServiceInterface = {
     uploadOne: async (bucket: string, folder: string, buffer: Buffer) => {
         const fileType = await fileTypeFromBuffer(buffer);
         if (!fileType) {
@@ -20,11 +60,102 @@ export const storageService = {
         const { error } = await supabaseClient.storage
             .from(bucket)
             .upload(filePath, buffer, { contentType: mime });
-        return { error, filePath };
+        if (error) {
+            logger.warn(
+                `Cannot upload ${filePath} in bucket ${bucket}. Error: ${error.message}`
+            );
+            throw new CustomError(
+                error.message,
+                StatusCodes.INTERNAL_SERVER_ERROR
+            );
+        }
+        return filePath;
     },
 
     deleteOne: async (bucket: string, filePath: string) => {
-        return await supabaseClient.storage.from(bucket).remove([filePath]);
+        const { error, data } = await supabaseClient.storage
+            .from(bucket)
+            .remove([filePath]);
+        if (error) {
+            logger.warn(
+                `Cannot delete ${filePath} in bucket ${bucket}. Error: ${error}`
+            );
+            throw new CustomError(
+                error.message,
+                StatusCodes.INTERNAL_SERVER_ERROR
+            );
+        }
+        return data[0];
+    },
+
+    deleteMany: async (
+        bucket: string,
+        filePaths: string[]
+    ): Promise<
+        | { success: true; datas: FileObject[]; errors: null }
+        | { success: false; datas: null; errors: StorageError[] }
+    > => {
+        const datas: FileObject[] = new Array(filePaths.length);
+        const errors: StorageError[] = new Array(filePaths.length);
+
+        try {
+            const results = await Promise.allSettled(
+                filePaths.map((filePath, index) => {
+                    return storageService
+                        .deleteOne(bucket, filePath)
+                        .then((data) => (datas[index] = data))
+                        .catch((err) => {
+                            errors[index] = err;
+                            throw err;
+                        });
+                })
+            );
+            if (results.some((res) => res.status === "rejected")) {
+                throw new CustomError(
+                    "Error while deleting files",
+                    StatusCodes.INTERNAL_SERVER_ERROR
+                );
+            }
+            return { success: true, datas, errors: null };
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (err) {
+            return { success: false, datas: null, errors };
+        }
+    },
+
+    uploadMany: async (
+        bucket: string,
+        files: { folder: string; buffer: Buffer }[]
+    ): Promise<
+        | { success: true; filePaths: string[] }
+        | { success: false; filePaths: null }
+    > => {
+        const filePaths: string[] = [];
+
+        try {
+            const results = await Promise.allSettled(
+                files.map((file, index) => {
+                    const { folder, buffer } = file;
+                    return storageService
+                        .uploadOne(bucket, folder, buffer)
+                        .then((filePath) => (filePaths[index] = filePath));
+                })
+            );
+            if (results.some((res) => res.status === "rejected")) {
+                throw new CustomError(
+                    "Error while uploading files",
+                    StatusCodes.INTERNAL_SERVER_ERROR
+                );
+            }
+            return { success: true, filePaths };
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (err) {
+            const successUploadedFilepaths: string[] = filePaths.filter(
+                (value) => value != null
+            );
+            await storageService.deleteMany(bucket, successUploadedFilepaths);
+            return { success: false, filePaths: null };
+        }
     },
 
     generateUrl: async (bucket: string, filePath: string) => {

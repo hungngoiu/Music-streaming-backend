@@ -14,7 +14,7 @@ import { redisService } from "./redis.service.js";
 import { timeToMs } from "@/utils/time.js";
 import { envConfig } from "@/configs/env.config.js";
 import { namespaces } from "@/configs/redis.config.js";
-interface authServiceInterface {
+interface AuthServiceInterface {
     signUp: (
         data: SignUpDto
     ) => Promise<{ user: User; accessToken: string; refreshToken: string }>;
@@ -29,7 +29,7 @@ interface authServiceInterface {
     verifyCode: (userId: string, code: string) => Promise<void>;
 }
 
-export const authService: authServiceInterface = {
+export const authService: AuthServiceInterface = {
     signUp: async (data: SignUpDto) => {
         const { username, email, password, userProfile } = data;
         const filter: Prisma.UserWhereInput = {

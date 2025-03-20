@@ -21,7 +21,7 @@ export const disconnectRedis = async () => {
 
 client.on("error", (err) => {
     logger.error(`Redis error: ${err}`);
-    // process.exit(1);
+    process.exit(1);
 });
 
 export default client;
