@@ -41,7 +41,11 @@ interface StorageServiceInterface {
               errors: StorageError[];
           }
     >;
-    generateUrl: (bucket: string, filePath: string) => Promise<string | null>;
+    generateUrl: (
+        bucket: string,
+        filePath: string,
+        duration?: number
+    ) => Promise<string | null>;
 }
 
 export const storageService: StorageServiceInterface = {
@@ -158,10 +162,14 @@ export const storageService: StorageServiceInterface = {
         }
     },
 
-    generateUrl: async (bucket: string, filePath: string) => {
+    generateUrl: async (
+        bucket: string,
+        filePath: string,
+        duration: number = 900
+    ) => {
         const { data, error } = await supabaseClient.storage
             .from(bucket)
-            .createSignedUrl(filePath, 900);
+            .createSignedUrl(filePath, duration);
         if (error) {
             logger.error(error.message);
         }

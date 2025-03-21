@@ -22,26 +22,20 @@ export const userController = {
             }
             const audioFile = files.audioFile[0];
             const coverImage = files.coverImage[0];
-            const { song, audioUrl, coverImageUrl } =
-                await songService.createSong(
-                    bodyData,
-                    user!.id,
-                    audioFile,
-                    coverImage
-                );
-            const message = audioUrl
-                ? "Song uploaded successfully"
-                : "Song uploaded successfully, but failed to generate an url";
+            const song = await songService.createSong(
+                bodyData,
+                user!.id,
+                audioFile,
+                coverImage
+            );
             res.status(StatusCodes.OK).json({
                 status: "success",
-                message: message,
+                message: "Song uploaded successfully",
                 data: {
                     song: omitPropsFromObject(song, [
                         "audioFilePath",
                         "coverImagePath"
-                    ]),
-                    audioUrl: audioUrl,
-                    coverImageUrl: coverImageUrl
+                    ])
                 }
             });
         } catch (err) {
