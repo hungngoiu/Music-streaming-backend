@@ -11,6 +11,8 @@ export const envConfig = {
     //Supabase
     SUPABASE_PROJECT_URL: process.env.SUPABASE_PROJECT_URL!,
     SUPABASE_API_KEY: process.env.SUPABASE_API_KEY!,
+    IMAGE_URL_EXP: Number(process.env.IMAGE_URL_EXP) || 900,
+    MUCSIC_URL_EXP: Number(process.env.MUSIC_URL_EXP) || 900,
 
     //Redis
     REDIS_PASSWORD: process.env.REDIS_PASSWORD,

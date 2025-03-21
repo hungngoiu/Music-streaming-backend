@@ -3,7 +3,10 @@ import { Router } from "express";
 import { StatusCodes } from "http-status-codes";
 import { Request, Response } from "express";
 import { userController } from "@/controllers/user.controller.js";
-import { verifyTokenMiddleware } from "@/middlewares/token.middleware.js";
+import {
+    isVerifiedUserMiddleware,
+    verifyTokenMiddleware
+} from "@/middlewares/auth.middleware.js";
 import { fieldsFileUpload } from "@/middlewares/file.middleware.js";
 const router = Router();
 
@@ -31,6 +34,7 @@ router.post(
             }
         ]
     }),
+    isVerifiedUserMiddleware,
     userController.upload
 );
 

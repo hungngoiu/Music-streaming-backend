@@ -73,9 +73,11 @@ export const verifyTokenMiddleware = (type: "at" | "rt") => {
         }
         try {
             if (!secret) {
-                throw new CustomError(
-                    "JWT secret key is not found",
-                    StatusCodes.INTERNAL_SERVER_ERROR
+                return next(
+                    new CustomError(
+                        "JWT secret key is not found",
+                        StatusCodes.INTERNAL_SERVER_ERROR
+                    )
                 );
             }
             const payload = jwt.verify(token, secret) as jwt.JwtPayload;
@@ -94,4 +96,21 @@ export const verifyTokenMiddleware = (type: "at" | "rt") => {
             }
         }
     };
+};
+
+export const isVerifiedUserMiddleware = (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    const user = req.user!;
+    if (!user.isVerified) {
+        return next(
+            new AuthenticationError(
+                "User is not verified",
+                StatusCodes.UNAUTHORIZED
+            )
+        );
+    }
+    return next();
 };

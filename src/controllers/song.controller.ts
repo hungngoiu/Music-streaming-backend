@@ -12,7 +12,7 @@ export const songController = {
         try {
             const songId = req.params.id;
             const { song, coverImageUrl } = await songService.getSong(songId);
-            res.status(StatusCodes.OK).json({
+            res.status(StatusCodes.CREATED).json({
                 status: "success",
                 data: {
                     song: omitPropsFromObject(song, [

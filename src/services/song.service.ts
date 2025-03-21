@@ -8,13 +8,14 @@ import { musicsBucketConfigs } from "@/configs/storage.config.js";
 import { songRepo } from "@/repositories/song.repo.js";
 import sharp from "sharp";
 import { omitPropsFromObject } from "@/utils/object.js";
+import { envConfig } from "@/configs/env.config.js";
 interface SongServiceInterface {
     createSong: (
         data: CreateSongDto,
         userId: string,
         audioFile: Express.Multer.File,
         coverImg: Express.Multer.File
-    ) => Promise<Song>;
+    ) => Promise<{ song: Song; coverImageUrl: string | null }>;
     getSong: (
         id: string
     ) => Promise<{ song: Song; coverImageUrl: string | null }>;
@@ -32,7 +33,7 @@ export const songService: SongServiceInterface = {
         userId: string,
         audioFile: Express.Multer.File,
         coverImg: Express.Multer.File
-    ): Promise<Song> => {
+    ): Promise<{ song: Song; coverImageUrl: string | null }> => {
         const user = userRepo.getOneByFilter({ id: userId });
         if (!user) {
             throw new CustomError("User not found", StatusCodes.NOT_FOUND);
@@ -67,14 +68,19 @@ export const songService: SongServiceInterface = {
         }
         const audioFilePath = filePaths[0];
         const coverImagePath = filePaths[1];
-        let song: Song;
         try {
-            song = await songRepo.createOne({
+            const song = await songRepo.createOne({
                 ...data,
                 audioFilePath: audioFilePath,
                 coverImagePath: coverImagePath,
                 user: { connect: { id: userId } }
             });
+            const coverImageUrl = await storageService.generateUrl(
+                musicsBucketConfigs.name,
+                song.coverImagePath,
+                envConfig.IMAGE_URL_EXP
+            );
+            return { song, coverImageUrl };
         } catch (err) {
             await storageService.deleteMany(
                 musicsBucketConfigs.name,
@@ -82,7 +88,6 @@ export const songService: SongServiceInterface = {
             );
             throw err;
         }
-        return song;
     },
 
     getSong: async (
@@ -97,7 +102,8 @@ export const songService: SongServiceInterface = {
         }
         const coverImageUrl = await storageService.generateUrl(
             musicsBucketConfigs.name,
-            song.coverImagePath
+            song.coverImagePath,
+            envConfig.IMAGE_URL_EXP
         );
         return { song, coverImageUrl };
     },
@@ -122,7 +128,7 @@ export const songService: SongServiceInterface = {
                 const coverImageUrl = await storageService.generateUrl(
                     musicsBucketConfigs.name,
                     song.coverImagePath,
-                    60 * 60 * 24
+                    envConfig.IMAGE_URL_EXP
                 );
                 return { song, coverImageUrl };
             })
@@ -137,7 +143,7 @@ export const songService: SongServiceInterface = {
         const audioUrl = await storageService.generateUrl(
             musicsBucketConfigs.name,
             song.audioFilePath,
-            60 * 15
+            envConfig.MUCSIC_URL_EXP
         );
         return audioUrl;
     }

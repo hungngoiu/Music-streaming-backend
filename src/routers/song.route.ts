@@ -1,6 +1,9 @@
 import { songRouteConfig } from "@/configs/routes/index.js";
 import { songController } from "@/controllers/song.controller.js";
-import { verifyTokenMiddleware } from "@/middlewares/token.middleware.js";
+import {
+    isVerifiedUserMiddleware,
+    verifyTokenMiddleware
+} from "@/middlewares/auth.middleware.js";
 import { getSongSchema } from "@/schemas/song.schema.js";
 import { dataValidation } from "@/validations/data.validations.js";
 import { Router } from "express";
@@ -24,6 +27,11 @@ router.get(
 
 router.get(songRouteConfig.getSong, songController.getSong);
 
-router.get(songRouteConfig.streamSong, verifyTokenMiddleware("at"), songController.streamSong);
+router.get(
+    songRouteConfig.streamSong,
+    verifyTokenMiddleware("at"),
+    isVerifiedUserMiddleware,
+    songController.streamSong
+);
 
 export default router;
