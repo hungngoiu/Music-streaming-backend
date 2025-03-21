@@ -1,4 +1,4 @@
-import { passwordRegex, phoneRegex, usernameRegex } from "@/types/regex.js";
+import { passwordRegex, phoneRegex, usernameRegex } from "@/utils/regex.js";
 import { z } from "zod";
 import { Gender } from "@prisma/client";
 

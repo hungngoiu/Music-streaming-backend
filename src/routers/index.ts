@@ -1,6 +1,12 @@
 import { Router } from "express";
 import authRouter from "./auth.route.js";
-import { authRouteConfig } from "@/configs/routes/index.js";
+import userRouter from "./user.route.js";
+import songRouter from "./song.route.js";
+import {
+    authRouteConfig,
+    songRouteConfig,
+    userRouteConfig
+} from "@/configs/routes/index.js";
 import { requestLogger } from "@/utils/logger.js";
 
 export const rootRouter: Router = Router();
@@ -14,6 +20,14 @@ const apisConfigs: configProps[] = [
     {
         index: authRouteConfig.index,
         router: authRouter
+    },
+    {
+        index: userRouteConfig.index,
+        router: userRouter
+    },
+    {
+        index: songRouteConfig.index,
+        router: songRouter
     }
 ];
 

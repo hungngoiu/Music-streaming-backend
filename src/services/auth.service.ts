@@ -11,10 +11,10 @@ import { UserPayload } from "@/types/jwt.js";
 import { randomInt } from "crypto";
 import { sendMail } from "@/utils/mailer.js";
 import { redisService } from "./redis.service.js";
-import { namespaces } from "@/types/dto/index.js";
 import { timeToMs } from "@/utils/time.js";
 import { envConfig } from "@/configs/env.config.js";
-interface authServiceInterface {
+import { namespaces } from "@/configs/redis.config.js";
+interface AuthServiceInterface {
     signUp: (
         data: SignUpDto
     ) => Promise<{ user: User; accessToken: string; refreshToken: string }>;
@@ -29,7 +29,7 @@ interface authServiceInterface {
     verifyCode: (userId: string, code: string) => Promise<void>;
 }
 
-export const authService: authServiceInterface = {
+export const authService: AuthServiceInterface = {
     signUp: async (data: SignUpDto) => {
         const { username, email, password, userProfile } = data;
         const filter: Prisma.UserWhereInput = {

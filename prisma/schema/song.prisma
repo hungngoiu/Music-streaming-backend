@@ -1,0 +1,10 @@
+model Song {
+    id             String @id @default(uuid())
+    name           String
+    audioFilePath  String
+    coverImagePath String
+    userId         String
+    user           User   @relation(fields: [userId], references: [id])
+
+    @@map("songs")
+}
