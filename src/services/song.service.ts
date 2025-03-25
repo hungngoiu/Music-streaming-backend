@@ -7,7 +7,6 @@ import { storageService } from "./storage.service.js";
 import { musicsBucketConfigs } from "@/configs/storage.config.js";
 import { songRepo } from "@/repositories/song.repo.js";
 import sharp from "sharp";
-import { omitPropsFromObject } from "@/utils/object.js";
 import { envConfig } from "@/configs/env.config.js";
 interface SongServiceInterface {
     createSong: (
@@ -111,17 +110,11 @@ export const songService: SongServiceInterface = {
     getSongs: async (
         args: GetSongsDto
     ): Promise<{ song: Song; coverImageUrl: string | null }[]> => {
-        const { options, name } = args;
-        const filter = omitPropsFromObject(args, ["options", "name"]);
+        const { options, name, userId } = args;
         const { limit = 10, offset = 0 } = options ?? { undefined };
-        const songs = await songRepo.getManyByFilter(
-            {
-                ...filter,
-                name: {
-                    search: name ? name.replace(" ", "&") : undefined
-                }
-            },
-            { take: limit <= 100 ? limit : 100, skip: offset }
+        const songs = await songRepo.searchSongs(
+            { name, userId },
+            { limit, offset }
         );
         return Promise.all(
             songs.map(async (song) => {
