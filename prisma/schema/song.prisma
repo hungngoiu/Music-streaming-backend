@@ -6,5 +6,6 @@ model Song {
     userId         String @map("user_id")
     user           User   @relation(fields: [userId], references: [id])
 
+    @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
     @@map("songs")
 }

@@ -1,5 +1,7 @@
 import prismaClient from "@/databases/prisma.js";
+import { omitPropsFromObject } from "@/utils/object.js";
 import { Prisma, Song } from "@prisma/client";
+import { searchSongs, searchSongswithUserId } from "@prisma/client/sql";
 
 export const songRepo = {
     createOne: (
@@ -29,6 +31,31 @@ export const songRepo = {
         return prismaClient.song.findMany({
             where: filter,
             ...options
+        });
+    },
+
+    searchSongs: async (
+        filter: { userId?: string; name?: string },
+        options?: { limit?: number; offset?: number }
+    ): Promise<Song[]> => {
+        const { name = "", userId } = filter;
+        const { offset = 0, limit = 10 } = options ?? { undefined };
+        const sql = userId
+            ? searchSongswithUserId(name, limit, offset, userId)
+            : searchSongs(name, limit, offset);
+        const songs = await prismaClient.$queryRawTyped(sql);
+        return songs.map((song) => {
+            return {
+                userId: song.user_id,
+                coverImagePath: song.cover_image_path,
+                audioFilePath: song.audio_file_path,
+                ...omitPropsFromObject(song, [
+                    "audio_file_path",
+                    "cover_image_path",
+                    "user_id",
+                    "rank"
+                ])
+            };
         });
     },
 
