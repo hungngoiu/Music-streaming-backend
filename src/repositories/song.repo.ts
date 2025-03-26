@@ -36,27 +36,24 @@ export const songRepo = {
 
     searchSongs: async (
         filter: { userId?: string; name?: string },
-        options?: { limit?: number; offset?: number }
+        options?: Omit<Prisma.SongFindManyArgs, "where">
     ): Promise<Song[]> => {
         const { name = "", userId } = filter;
-        const { offset = 0, limit = 10 } = options ?? { undefined };
+        const { skip = 0, take = 10 } = options ?? { undefined };
         const sql = userId
-            ? searchSongswithUserId(name, limit, offset, userId)
-            : searchSongs(name, limit, offset);
-        const songs = await prismaClient.$queryRawTyped(sql);
-        return songs.map((song) => {
-            return {
-                userId: song.user_id,
-                coverImagePath: song.cover_image_path,
-                audioFilePath: song.audio_file_path,
-                ...omitPropsFromObject(song, [
-                    "audio_file_path",
-                    "cover_image_path",
-                    "user_id",
-                    "rank"
-                ])
-            };
+            ? searchSongswithUserId(name, take, skip, userId)
+            : searchSongs(name, take, skip);
+        const results = await prismaClient.$queryRawTyped(sql);
+        const ids = results.map((result) => result.id);
+
+        const songs = await prismaClient.song.findMany({
+            where: { id: { in: ids } },
+            ...(options ? omitPropsFromObject(options, ["skip", "take"]) : {})
         });
+
+        const idOrderMap = new Map(ids.map((id, index) => [id, index]));
+        songs.sort((a, b) => idOrderMap.get(a.id)! - idOrderMap.get(b.id)!);
+        return songs;
     },
 
     update: (

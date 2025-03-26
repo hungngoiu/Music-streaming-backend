@@ -4,9 +4,9 @@
 -- @param {String} $4: userId
 
 
-SELECT *, strict_word_similarity(name, $1) AS rank
+SELECT id
 FROM songs
 WHERE user_id = $4
-ORDER BY rank DESC
+ORDER BY strict_word_similarity(name, $1) DESC
 LIMIT $2
 OFFSET $3;

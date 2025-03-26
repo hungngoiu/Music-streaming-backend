@@ -3,8 +3,8 @@
 -- @param {Int} $3:offset
 
 
-SELECT *, strict_word_similarity(name, $1) AS rank
+SELECT id
 FROM songs
-ORDER BY rank DESC
+ORDER BY strict_word_similarity(name, $1) DESC
 LIMIT $2
 OFFSET $3;

@@ -12,14 +12,16 @@ export const songController = {
         try {
             const songId = req.params.id;
             const { song, coverImageUrl } = await songService.getSong(songId);
-            res.status(StatusCodes.CREATED).json({
+            res.status(StatusCodes.OK).json({
                 status: "success",
                 data: {
-                    song: omitPropsFromObject(song, [
-                        "audioFilePath",
-                        "coverImagePath"
-                    ]),
-                    coverImageUrl
+                    song: {
+                        ...omitPropsFromObject(song, [
+                            "audioFilePath",
+                            "coverImagePath"
+                        ]),
+                        coverImageUrl
+                    }
                 }
             });
         } catch (err) {
@@ -43,13 +45,16 @@ export const songController = {
                 data: songsAndUrls.map((songAndUrl) => {
                     const { song, coverImageUrl } = songAndUrl;
                     return {
-                        song: omitPropsFromObject(song, [
-                            "audioFilePath",
-                            "coverImagePath"
-                        ]),
-                        coverImageUrl
+                        song: {
+                            ...omitPropsFromObject(song, [
+                                "audioFilePath",
+                                "coverImagePath"
+                            ]),
+                            coverImageUrl
+                        }
                     };
-                })
+                }),
+                count: songsAndUrls.length
             });
         } catch (err) {
             next(err);

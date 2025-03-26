@@ -43,5 +43,4 @@ const shutdownServer = async (server: Server, signal: string) => {
         process.exit(1);
     }
 };
-
 startServer();

@@ -95,7 +95,18 @@ export const songService: SongServiceInterface = {
         song: Song;
         coverImageUrl: string | null;
     }> => {
-        const song = await songRepo.getOnebyFilter({ id });
+        const song = await songRepo.getOnebyFilter(
+            { id },
+            {
+                include: {
+                    user: {
+                        omit: {
+                            password: true
+                        }
+                    }
+                }
+            }
+        );
         if (!song) {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }
@@ -114,7 +125,17 @@ export const songService: SongServiceInterface = {
         const { limit = 10, offset = 0 } = options ?? { undefined };
         const songs = await songRepo.searchSongs(
             { name, userId },
-            { limit, offset }
+            {
+                take: limit,
+                skip: offset,
+                include: {
+                    user: {
+                        omit: {
+                            password: true
+                        }
+                    }
+                }
+            }
         );
         return Promise.all(
             songs.map(async (song) => {

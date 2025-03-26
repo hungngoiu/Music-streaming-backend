@@ -32,11 +32,13 @@ export const userController = {
                 status: "success",
                 message: "Song uploaded successfully",
                 data: {
-                    song: omitPropsFromObject(song, [
-                        "audioFilePath",
-                        "coverImagePath"
-                    ]),
-                    coverImageUrl
+                    song: {
+                        ...omitPropsFromObject(song, [
+                            "audioFilePath",
+                            "coverImagePath"
+                        ]),
+                        coverImageUrl
+                    }
                 }
             });
         } catch (err) {
