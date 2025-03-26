@@ -1,5 +1,5 @@
 import { CustomError } from "@/errors/CustomError.js";
-import { getSongSchema } from "@/schemas/song.schema.js";
+import { getSongQuerySchema, getSongsSchema } from "@/schemas/index.js";
 import { songService } from "@/services/song.service.js";
 import { omitPropsFromObject } from "@/utils/object.js";
 import axios from "axios";
@@ -11,7 +11,14 @@ export const songController = {
     getSong: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const songId = req.params.id;
-            const { song, coverImageUrl } = await songService.getSong(songId);
+            const queries = req.query as z.infer<typeof getSongQuerySchema>;
+            const includeUserProfile = queries.userProfiles;
+            const { song, coverImageUrl } = await songService.getSong({
+                id: songId,
+                options: {
+                    userProfiles: includeUserProfile
+                }
+            });
             res.status(StatusCodes.OK).json({
                 status: "success",
                 data: {
@@ -31,13 +38,14 @@ export const songController = {
 
     getSongs: async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const queries = req.query as z.infer<typeof getSongSchema>;
-            const { limit, offset } = queries;
+            const queries = req.query as z.infer<typeof getSongsSchema>;
+            const { limit, offset, userProfiles } = queries;
             const songsAndUrls = await songService.getSongs({
                 ...omitPropsFromObject(queries, ["limit", "offset"]),
                 options: {
                     limit,
-                    offset
+                    offset,
+                    userProfiles
                 }
             });
             res.status(StatusCodes.OK).json({

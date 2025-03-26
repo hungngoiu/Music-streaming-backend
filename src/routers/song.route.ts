@@ -4,7 +4,7 @@ import {
     isVerifiedUserMiddleware,
     verifyTokenMiddleware
 } from "@/middlewares/auth.middleware.js";
-import { getSongSchema } from "@/schemas/song.schema.js";
+import { getSongQuerySchema, getSongsSchema } from "@/schemas/song.schema.js";
 import { dataValidation } from "@/validations/data.validations.js";
 import { Router } from "express";
 import { Request, Response } from "express";
@@ -21,11 +21,15 @@ router.get(songRouteConfig.status, (req: Request, res: Response) => {
 
 router.get(
     songRouteConfig.getSongs,
-    dataValidation(getSongSchema, "query"),
+    dataValidation(getSongsSchema, "query"),
     songController.getSongs
 );
 
-router.get(songRouteConfig.getSong, songController.getSong);
+router.get(
+    songRouteConfig.getSong,
+    dataValidation(getSongQuerySchema, "query"),
+    songController.getSong
+);
 
 router.get(
     songRouteConfig.streamSong,

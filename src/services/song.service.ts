@@ -1,6 +1,10 @@
 import { CustomError } from "@/errors/index.js";
 import { userRepo } from "@/repositories/user.repo.js";
-import { CreateSongDto, GetSongsDto } from "@/types/dto/song.dto.js";
+import {
+    CreateSongDto,
+    GetSongDto,
+    GetSongsDto
+} from "@/types/dto/song.dto.js";
 import { Song } from "@prisma/client";
 import { StatusCodes } from "http-status-codes";
 import { storageService } from "./storage.service.js";
@@ -16,7 +20,7 @@ interface SongServiceInterface {
         coverImg: Express.Multer.File
     ) => Promise<{ song: Song; coverImageUrl: string | null }>;
     getSong: (
-        id: string
+        args: GetSongDto
     ) => Promise<{ song: Song; coverImageUrl: string | null }>;
 
     getSongs: (
@@ -90,11 +94,12 @@ export const songService: SongServiceInterface = {
     },
 
     getSong: async (
-        id: string
+        args: GetSongDto
     ): Promise<{
         song: Song;
         coverImageUrl: string | null;
     }> => {
+        const { id, options } = args;
         const song = await songRepo.getOnebyFilter(
             { id },
             {
@@ -102,6 +107,9 @@ export const songService: SongServiceInterface = {
                     user: {
                         omit: {
                             password: true
+                        },
+                        include: {
+                            userProfile: options?.userProfiles ?? false
                         }
                     }
                 }
@@ -132,6 +140,9 @@ export const songService: SongServiceInterface = {
                     user: {
                         omit: {
                             password: true
+                        },
+                        include: {
+                            userProfile: options?.userProfiles ?? false
                         }
                     }
                 }
