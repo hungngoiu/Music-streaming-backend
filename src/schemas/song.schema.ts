@@ -1,3 +1,4 @@
+import { booleanSchema } from "@/utils/zod.js";
 import { z } from "zod";
 
 export const uploadSongSchema = z.object({
@@ -17,9 +18,9 @@ export const getSongsSchema = z.object({
         .int("The offset must be an integer")
         .min(0, "The offset must not be negative")
         .optional(),
-    userProfiles: z.coerce.boolean().optional()
+    userProfiles: booleanSchema.optional()
 });
 
 export const getSongQuerySchema = z.object({
-    userProfiles: z.coerce.boolean().optional()
+    userProfiles: booleanSchema.optional()
 });
