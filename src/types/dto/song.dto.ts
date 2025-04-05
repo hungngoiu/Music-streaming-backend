@@ -2,6 +2,7 @@ import { Song } from "@prisma/client";
 
 export type CreateSongDto = {
     name: string;
+    lyric?: string;
 };
 
 export type GetSongDto = Partial<Pick<Song, "id">> & {
