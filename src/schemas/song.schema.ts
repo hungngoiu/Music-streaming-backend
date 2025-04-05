@@ -2,7 +2,8 @@ import { booleanSchema } from "@/utils/zod.js";
 import { z } from "zod";
 
 export const uploadSongSchema = z.object({
-    name: z.string().min(1, "Name required")
+    name: z.string().min(1, "Name required"),
+    lyric: z.string().optional()
 });
 
 export const getSongsSchema = z.object({
