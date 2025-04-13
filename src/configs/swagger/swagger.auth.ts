@@ -1,6 +1,6 @@
 import { OpenAPIV3 } from "openapi-types";
 import { authRouteConfig } from "../routes/index.js";
-import { userExample, userProfileExample } from "./schemas/users.js";
+import { userExample, userProfileExample } from "./schemas/user.js";
 
 export const authRouteDoc: OpenAPIV3.PathsObject = {
     [`${authRouteConfig.index}${authRouteConfig.signUp}`]: {
@@ -12,6 +12,12 @@ export const authRouteDoc: OpenAPIV3.PathsObject = {
                     "application/json": {
                         schema: {
                             type: "object",
+                            required: [
+                                "username",
+                                "email",
+                                "password",
+                                "userProfile"
+                            ],
                             properties: {
                                 username: {
                                     type: "string",
@@ -29,6 +35,12 @@ export const authRouteDoc: OpenAPIV3.PathsObject = {
                                 },
                                 userProfile: {
                                     type: "object",
+                                    required: [
+                                        "name",
+                                        "birth",
+                                        "gender",
+                                        "phone"
+                                    ],
                                     properties: {
                                         name: {
                                             type: "string",
@@ -214,6 +226,7 @@ export const authRouteDoc: OpenAPIV3.PathsObject = {
                     "application/json": {
                         schema: {
                             type: "object",
+                            required: ["code"],
                             properties: {
                                 code: {
                                     type: "string",

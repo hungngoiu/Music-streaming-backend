@@ -2,8 +2,10 @@ import { SwaggerUiOptions } from "swagger-ui-express";
 import { OpenAPIV3 } from "openapi-types";
 import { apiConfig } from "../routes/index.js";
 import { envConfig } from "../env.config.js";
-import { userProfileSchema, userSchema } from "./schemas/users.js";
+import { userProfileSchema, userSchema } from "./schemas/user.js";
 import { authRouteDoc } from "./swagger.auth.js";
+import { userRouteDoc } from "./swagger.user.js";
+import { songSchema } from "./schemas/song.js";
 
 export const swaggerOptions: SwaggerUiOptions = {
     swaggerOptions: {
@@ -24,12 +26,14 @@ const document: OpenAPIV3.Document = {
         }
     ],
     paths: {
-        ...authRouteDoc
+        ...authRouteDoc,
+        ...userRouteDoc
     },
     components: {
         schemas: {
             user: userSchema,
-            userProfile: userProfileSchema
+            userProfile: userProfileSchema,
+            song: songSchema
         },
         securitySchemes: {
             bearerAuth: {
