@@ -1,5 +1,4 @@
 import { CustomError } from "@/errors/index.js";
-import { userRepo } from "@/repositories/user.repo.js";
 import {
     CreateSongDto,
     GetSongDto,
@@ -9,7 +8,7 @@ import { Song } from "@prisma/client";
 import { StatusCodes } from "http-status-codes";
 import { storageService } from "./storage.service.js";
 import { musicsBucketConfigs } from "@/configs/storage.config.js";
-import { songRepo } from "@/repositories/song.repo.js";
+import { songRepo, userRepo } from "@/repositories/index.js";
 import sharp from "sharp";
 import { envConfig } from "@/configs/env.config.js";
 interface SongServiceInterface {
@@ -72,7 +71,7 @@ export const songService: SongServiceInterface = {
         const audioFilePath = filePaths[0];
         const coverImagePath = filePaths[1];
         try {
-            const song = await songRepo.createOne({
+            const song = await songRepo.create({
                 ...data,
                 audioFilePath: audioFilePath,
                 coverImagePath: coverImagePath,

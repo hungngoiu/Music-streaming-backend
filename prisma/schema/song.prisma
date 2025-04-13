@@ -5,8 +5,17 @@ model Song {
     coverImagePath String  @map("cover_image_path")
     lyric          String?
     userId         String  @map("user_id")
+    albumId        String  @map("album_id")
     user           User    @relation(fields: [userId], references: [id])
+    album          Album?  @relation(fields: [albumId], references: [id])
 
     @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
     @@map("songs")
+}
+
+model Album {
+    id             String @id @default(uuid())
+    name           String
+    coverImagePath String @map("cover_image_path")
+    songs          Song[]
 }

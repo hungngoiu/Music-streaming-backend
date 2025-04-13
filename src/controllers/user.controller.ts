@@ -1,6 +1,6 @@
 import { CustomError } from "@/errors/CustomError.js";
 import { uploadSongSchema } from "@/schemas/song.schema.js";
-import { songService } from "@/services/song.service.js";
+import { songService } from "@/services/index.js";
 import { omitPropsFromObject } from "@/utils/object.js";
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";

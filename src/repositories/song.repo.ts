@@ -4,7 +4,7 @@ import { Prisma, Song } from "@prisma/client";
 import { searchSongs, searchSongswithUserId } from "@prisma/client/sql";
 
 export const songRepo = {
-    createOne: (
+    create: (
         data: Prisma.SongCreateInput,
         options?: Omit<Prisma.SongCreateArgs, "data">
     ): Promise<Song> => {

@@ -1,6 +1,6 @@
 import { CustomError } from "@/errors/CustomError.js";
 import { getSongQuerySchema, getSongsSchema } from "@/schemas/index.js";
-import { songService } from "@/services/song.service.js";
+import { songService } from "@/services/index.js";
 import { omitPropsFromObject } from "@/utils/object.js";
 import axios from "axios";
 import { NextFunction, Request, Response } from "express";
