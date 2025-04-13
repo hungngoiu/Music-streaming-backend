@@ -7,6 +7,9 @@ import { connectDbs, disconnectDbs } from "./databases/index.js";
 import { Server } from "http";
 import { apiConfig } from "./configs/routes/index.js";
 import cookieParser from "cookie-parser";
+import swaggerUi from "swagger-ui-express";
+import swaggerDocument, { swaggerOptions } from "@/configs/swagger/index.js";
+
 const app: Express = express();
 
 const startServer = async () => {
@@ -14,6 +17,11 @@ const startServer = async () => {
 
     app.use(express.json());
     app.use(cookieParser());
+    app.use(
+        apiConfig.docs,
+        swaggerUi.serve,
+        swaggerUi.setup(swaggerDocument, swaggerOptions)
+    );
     app.use(apiConfig.api, rootRouter);
     app.use(errorMiddleware);
 
