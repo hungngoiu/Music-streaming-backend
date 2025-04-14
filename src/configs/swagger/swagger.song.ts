@@ -1,0 +1,143 @@
+import { OpenAPIV3 } from "openapi-types";
+import { songRouteConfig } from "../routes/index.js";
+import { songExample } from "./schemas/song.js";
+import { userExample } from "./schemas/user.js";
+
+export const songRouteDoc: OpenAPIV3.PathsObject = {
+    [`${songRouteConfig.index}/{id}`]: {
+        get: {
+            summary: "Get a song",
+            parameters: [
+                {
+                    in: "path",
+                    name: "id",
+                    description: "Id of the song to get",
+                    schema: {
+                        type: "string"
+                    },
+                    required: true
+                },
+                {
+                    in: "query",
+                    name: "userProfiles",
+                    description: "Optional fetching user profile",
+                    schema: {
+                        type: "boolean"
+                    }
+                }
+            ],
+            responses: {
+                "200": {
+                    description: "Get song successfully",
+                    content: {
+                        "application/json": {
+                            example: {
+                                status: "success",
+                                message: "string",
+                                data: {
+                                    song: {
+                                        ...songExample,
+                                        user: userExample
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "404": {
+                    description: "song not found"
+                }
+            },
+            tags: ["songs"]
+        }
+    },
+    [`${songRouteConfig.index}${songRouteConfig.getSongs}`]: {
+        get: {
+            summary: "Search songs by name and userId",
+            parameters: [
+                {
+                    in: "query",
+                    name: "name",
+                    schema: {
+                        type: "string"
+                    }
+                },
+                {
+                    in: "query",
+                    name: "limit",
+                    description: "Number of results",
+                    schema: {
+                        type: "integer"
+                    }
+                },
+                {
+                    in: "query",
+                    name: "offset",
+                    description: "Offset of the results",
+                    schema: {
+                        type: "integer"
+                    }
+                },
+                {
+                    in: "query",
+                    name: "userProfiles",
+                    description: "Optional fetching user profile",
+                    schema: {
+                        type: "boolean"
+                    }
+                }
+            ],
+            responses: {
+                "200": {
+                    description: "Get songs successfully",
+                    content: {
+                        "application/json": {
+                            example: {
+                                status: "success",
+                                message: "string",
+                                data: [
+                                    {
+                                        song: {
+                                            ...songExample,
+                                            user: userExample
+                                        }
+                                    }
+                                ],
+                                count: 1
+                            }
+                        }
+                    }
+                }
+            },
+            tags: ["songs"]
+        }
+    },
+    [`${songRouteConfig.index}/stream/{id}`]: {
+        get: {
+            security: [
+                {
+                    bearerAuth: []
+                }
+            ],
+            summary: "Stream a song",
+            parameters: [
+                {
+                    in: "path",
+                    name: "id",
+                    description: "Id of the song to play",
+                    schema: {
+                        type: "string"
+                    },
+                    required: true
+                }
+            ],
+            responses: {
+                "206": {
+                    description:
+                        "Stream song successfully, the content is returned as partial content"
+                }
+            },
+            tags: ["songs"]
+        }
+    }
+};
