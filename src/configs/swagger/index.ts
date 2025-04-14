@@ -1,0 +1,55 @@
+import { SwaggerUiOptions } from "swagger-ui-express";
+import { OpenAPIV3 } from "openapi-types";
+import { apiConfig } from "../routes/index.js";
+import { envConfig } from "../env.config.js";
+import { userProfileSchema, userSchema } from "./schemas/user.js";
+import { authRouteDoc } from "./swagger.auth.js";
+import { userRouteDoc } from "./swagger.user.js";
+import { songSchema } from "./schemas/song.js";
+import { songRouteDoc } from "./swagger.song.js";
+
+export const swaggerOptions: SwaggerUiOptions = {
+    swaggerOptions: {
+        defaultModelsExpandDepth: -1
+    }
+};
+
+const document: OpenAPIV3.Document = {
+    openapi: "3.0.0",
+    info: {
+        title: "Music Streaming API",
+        description: "A complete APIs for a music streaming web app",
+        version: "0.0.0"
+    },
+    servers: [
+        {
+            url: `http://localhost:${envConfig.PORT}${apiConfig.api}`
+        }
+    ],
+    paths: {
+        ...authRouteDoc,
+        ...userRouteDoc,
+        ...songRouteDoc
+    },
+    components: {
+        schemas: {
+            user: userSchema,
+            userProfile: userProfileSchema,
+            song: songSchema
+        },
+        securitySchemes: {
+            bearerAuth: {
+                type: "http",
+                scheme: "bearer",
+                bearerFormat: "JWT"
+            },
+            refreshTokenCookieAuth: {
+                type: "apiKey",
+                in: "cookie",
+                name: "refreshToken"
+            }
+        }
+    }
+};
+
+export default document;
