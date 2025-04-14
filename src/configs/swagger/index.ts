@@ -6,6 +6,7 @@ import { userProfileSchema, userSchema } from "./schemas/user.js";
 import { authRouteDoc } from "./swagger.auth.js";
 import { userRouteDoc } from "./swagger.user.js";
 import { songSchema } from "./schemas/song.js";
+import { songRouteDoc } from "./swagger.song.js";
 
 export const swaggerOptions: SwaggerUiOptions = {
     swaggerOptions: {
@@ -17,7 +18,7 @@ const document: OpenAPIV3.Document = {
     openapi: "3.0.0",
     info: {
         title: "Music Streaming API",
-        description: "A complete APIs for a music streaming platform",
+        description: "A complete APIs for a music streaming web app",
         version: "0.0.0"
     },
     servers: [
@@ -27,7 +28,8 @@ const document: OpenAPIV3.Document = {
     ],
     paths: {
         ...authRouteDoc,
-        ...userRouteDoc
+        ...userRouteDoc,
+        ...songRouteDoc
     },
     components: {
         schemas: {

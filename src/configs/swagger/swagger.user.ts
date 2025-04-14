@@ -66,7 +66,7 @@ export const userRouteDoc: OpenAPIV3.PathsObject = {
                         }
                     }
                 },
-                "40X": {
+                "40x": {
                     description: "Error"
                 }
             },
