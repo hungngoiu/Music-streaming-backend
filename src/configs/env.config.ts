@@ -8,6 +8,12 @@ export const envConfig = {
     //logger
     LOG_LEVEL: process.env.LOG_LEVEL || "info",
 
+    //Supabase
+    SUPABASE_PROJECT_URL: process.env.SUPABASE_PROJECT_URL!,
+    SUPABASE_API_KEY: process.env.SUPABASE_API_KEY!,
+    IMAGE_URL_EXP: Number(process.env.IMAGE_URL_EXP) || 900,
+    MUCSIC_URL_EXP: Number(process.env.MUSIC_URL_EXP) || 900,
+
     //Redis
     REDIS_PASSWORD: process.env.REDIS_PASSWORD,
     REDIS_HOST: process.env.REDIS_HOST,

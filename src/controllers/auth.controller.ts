@@ -28,6 +28,7 @@ export const authController = {
                 })
                 .json({
                     status: "success",
+                    message: "User sign in successfully",
                     data: {
                         user: omitPropsFromObject(user, "password"),
                         accessToken,
@@ -49,8 +50,7 @@ export const authController = {
                 userProfile: {
                     ...omitPropsFromObject(userProfile, "birth"),
                     birth
-                },
-
+                }
             };
             const {
                 user: createdUser,
@@ -67,6 +67,7 @@ export const authController = {
                 })
                 .json({
                     status: "success",
+                    message: "User sign up successfully",
                     data: {
                         user: omitPropsFromObject(createdUser, "password"),
                         accessToken,
@@ -94,6 +95,7 @@ export const authController = {
                 })
                 .json({
                     status: "success",
+                    message: "Refresh access token successfully",
                     data: {
                         accessToken,
                         refreshToken

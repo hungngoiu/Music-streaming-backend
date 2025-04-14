@@ -1,2 +1,2 @@
 export * from "./error.middleware.js";
-export * from "./token.middleware.js";
+export * from "./auth.middleware.js";

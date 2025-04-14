@@ -16,7 +16,7 @@ export const errorMiddleware = (
 ) => {
     // validation error
     if (err instanceof ValidationError) {
-        logger.error("Validation error: " + err.message);
+        logger.info("Validation error: " + err.message);
         res.status(err.statusCode).json({
             status: "failed",
             error: {
@@ -29,7 +29,7 @@ export const errorMiddleware = (
     }
     //authentication error
     if (err instanceof AuthenticationError) {
-        logger.error("Authentication error: " + err.message);
+        logger.info("Authentication error: " + err.message);
         res.status(err.statusCode).json({
             status: "failed",
             error: {
@@ -41,7 +41,7 @@ export const errorMiddleware = (
     }
     // custom error
     if (err instanceof CustomError) {
-        logger.error(err.message);
+        logger.info(err.message);
         res.status(err.statusCode).json({
             status: "failed",
             error: {
