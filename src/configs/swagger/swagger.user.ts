@@ -2,7 +2,7 @@ import { OpenAPIV3 } from "openapi-types";
 import { userRouteConfig } from "../routes/index.js";
 
 export const userRouteDoc: OpenAPIV3.PathsObject = {
-    [`${userRouteConfig.index}${userRouteConfig.upload}`]: {
+    [`${userRouteConfig.index}${userRouteConfig.uploadSong}`]: {
         post: {
             summary: "Upload music",
             security: [

@@ -7,7 +7,7 @@ import {
     isVerifiedUserMiddleware,
     verifyTokenMiddleware
 } from "@/middlewares/auth.middleware.js";
-import { fieldsFileUpload } from "@/middlewares/file.middleware.js";
+import { fieldsFileUpload, singleFileUpload } from "@/middlewares/index.js";
 const router = Router();
 
 router.get(userRouteConfig.status, (req: Request, res: Response) => {
@@ -18,7 +18,7 @@ router.get(userRouteConfig.status, (req: Request, res: Response) => {
 });
 
 router.post(
-    userRouteConfig.upload,
+    userRouteConfig.uploadSong,
     verifyTokenMiddleware("at"),
     fieldsFileUpload({
         fields: [
@@ -35,7 +35,23 @@ router.post(
         ]
     }),
     isVerifiedUserMiddleware,
-    userController.upload
+    userController.uploadSong
+);
+
+router.post(
+    userRouteConfig.createAlbum,
+    verifyTokenMiddleware("at"),
+    singleFileUpload({
+        fieldName: "coverImage",
+        allowedExtensions: [".jpg", "jpeg", ".png"]
+    }),
+    userController.createAlbum
+);
+
+router.patch(
+    userRouteConfig.setSongs,
+    verifyTokenMiddleware("at"),
+    userController.setSongs
 );
 
 export default router;

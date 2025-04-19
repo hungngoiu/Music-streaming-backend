@@ -8,7 +8,6 @@ type SingleUploadOptions = {
     fieldName: string;
     allowedExtensions?: string[];
     maxSize?: number;
-    maxCount?: number;
 };
 
 type MultipleUploadOptions = {

@@ -39,5 +39,36 @@ export const albumRepo = {
             where: filter,
             ...options
         });
+    },
+
+    connectSongs: async (albumId: string, songIds: string[]) => {
+        await prismaClient.$transaction(async (tx) => {
+            await tx.album.update({
+                where: {
+                    id: albumId
+                },
+                data: {
+                    songs: {
+                        updateMany: {
+                            where: {},
+                            data: {
+                                albumOrder: null
+                            }
+                        },
+                        set: songIds.map((id) => {
+                            return { id: id };
+                        })
+                    }
+                }
+            });
+            await Promise.all(
+                songIds.map((id, index) =>
+                    tx.song.update({
+                        where: { id },
+                        data: { albumOrder: (index + 1) * 10 }
+                    })
+                )
+            );
+        });
     }
 };

@@ -1,11 +1,15 @@
 import { defaultRoutesConfigProps } from "./config.routes.default.js";
 
 interface userRouteConfigProps extends defaultRoutesConfigProps {
-    upload: string;
+    uploadSong: string;
+    createAlbum: string;
+    setSongs: string;
 }
 
 export const userRouteConfig: userRouteConfigProps = {
     index: "/users",
     status: "/status",
-    upload: "/upload"
+    uploadSong: "/songs",
+    createAlbum: "/albums",
+    setSongs: "/albums/:id"
 };

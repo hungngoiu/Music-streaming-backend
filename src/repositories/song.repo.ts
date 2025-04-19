@@ -68,6 +68,18 @@ export const songRepo = {
         });
     },
 
+    updateMany: (
+        filter: Prisma.SongWhereInput,
+        data: Prisma.SongUpdateInput,
+        options?: Omit<Prisma.SongUpdateManyArgs, "where" | "data">
+    ) => {
+        return prismaClient.song.updateMany({
+            where: filter,
+            data,
+            ...options
+        });
+    },
+
     delete: (
         filter: Prisma.SongWhereUniqueInput,
         options?: Omit<Prisma.SongDeleteArgs, "where">
