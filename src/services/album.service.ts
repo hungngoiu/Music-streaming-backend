@@ -19,6 +19,13 @@ interface AlbumServiceInterface {
         songIds: string[],
         userId: string
     ) => Promise<void>;
+
+    addSong: (
+        albumId: string,
+        songId: string,
+        userId: string,
+        index?: number
+    ) => Promise<void>;
 }
 
 export const albumService: AlbumServiceInterface = {
@@ -91,6 +98,15 @@ export const albumService: AlbumServiceInterface = {
                 }
             }
         );
+        const notFoundSongIds = songIds.filter(
+            (id) => !songs.map((song) => song.id).includes(id)
+        );
+        if (notFoundSongIds.length != 0) {
+            throw new CustomError(
+                `The following songs are not exist: ${notFoundSongIds}`,
+                StatusCodes.NOT_FOUND
+            );
+        }
         const invalidSongIds = songs
             .filter((song) => {
                 return song.albumId != null && song.albumId != albumId;
@@ -104,5 +120,36 @@ export const albumService: AlbumServiceInterface = {
             );
         }
         await albumRepo.connectSongs(albumId, songIds);
+    },
+
+    addSong: async (
+        albumId: string,
+        songId: string,
+        userId: string,
+        index?: number
+    ): Promise<void> => {
+        const album = await albumRepo.getOneByFilter({ id: albumId });
+        const song = await songRepo.getOnebyFilter({ id: songId });
+        if (!album) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
+        }
+        if (userId != album.userId) {
+            throw new AuthorizationError("Album not belong to user");
+        }
+        if (!song) {
+            throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
+        }
+        const { songAlreadyInAlbum } = await albumRepo.addSong(
+            albumId,
+            songId,
+            index
+        );
+
+        if (songAlreadyInAlbum) {
+            throw new CustomError(
+                "The song is already existed in the album",
+                StatusCodes.CONFLICT
+            );
+        }
     }
 };
