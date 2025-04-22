@@ -51,7 +51,13 @@ router.post(
 router.patch(
     userRouteConfig.addSong,
     verifyTokenMiddleware("at"),
-    userController.addsong
+    userController.addSong
+);
+
+router.patch(
+    userRouteConfig.addSongs,
+    verifyTokenMiddleware("at"),
+    userController.addSongs
 );
 
 router.patch(

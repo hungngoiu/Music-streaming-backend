@@ -1,7 +1,7 @@
 import { AuthorizationError, CustomError } from "@/errors/index.js";
 import { albumRepo, songRepo } from "@/repositories/index.js";
 import { CreateAlbumDto } from "@/types/dto/index.js";
-import { Album } from "@prisma/client";
+import { Album, Prisma } from "@prisma/client";
 import { StatusCodes } from "http-status-codes";
 import sharp from "sharp";
 import { storageService } from "./storage.service.js";
@@ -25,6 +25,12 @@ interface AlbumServiceInterface {
         songId: string,
         userId: string,
         index?: number
+    ) => Promise<void>;
+
+    addSongs: (
+        albumId: string,
+        songIds: string[],
+        userId: string
     ) => Promise<void>;
 }
 
@@ -107,15 +113,14 @@ export const albumService: AlbumServiceInterface = {
                 StatusCodes.NOT_FOUND
             );
         }
-        const invalidSongIds = songs
+        const assignedSongIds = songs
             .filter((song) => {
                 return song.albumId != null && song.albumId != albumId;
             })
-            .map((song) => song.id)
-            .join(", ");
-        if (invalidSongIds.length != 0) {
+            .map((song) => song.id);
+        if (assignedSongIds.length != 0) {
             throw new CustomError(
-                `The following songs are already assigned to another album: ${invalidSongIds}`,
+                `The following songs are already assigned to another album: ${assignedSongIds}`,
                 StatusCodes.BAD_REQUEST
             );
         }
@@ -128,7 +133,17 @@ export const albumService: AlbumServiceInterface = {
         userId: string,
         index?: number
     ): Promise<void> => {
-        const album = await albumRepo.getOneByFilter({ id: albumId });
+        const album = (await albumRepo.getOneByFilter(
+            { id: albumId },
+            {
+                include: {
+                    songs: true
+                }
+            }
+        )) as Prisma.AlbumGetPayload<{
+            include: { songs: true };
+        }> | null;
+
         const song = await songRepo.getOnebyFilter({ id: songId });
         if (!album) {
             throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
@@ -139,17 +154,65 @@ export const albumService: AlbumServiceInterface = {
         if (!song) {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }
-        const { songAlreadyInAlbum } = await albumRepo.addSong(
-            albumId,
-            songId,
-            index
-        );
-
-        if (songAlreadyInAlbum) {
+        if (album.songs.map((song) => song.id).includes(songId)) {
             throw new CustomError(
                 "The song is already existed in the album",
                 StatusCodes.CONFLICT
             );
         }
+        await albumRepo.addSong(album, songId, index);
+    },
+
+    addSongs: async (albumId: string, songIds: string[], userId: string) => {
+        const album = (await albumRepo.getOneByFilter(
+            { id: albumId },
+            { include: { songs: true } }
+        )) as Prisma.AlbumGetPayload<{
+            include: { songs: true };
+        }> | null;
+        if (!album) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
+        }
+        if (userId != album.userId) {
+            throw new AuthorizationError("Album not belong to user");
+        }
+
+        const songs = await songRepo.getManyByFilter(
+            {
+                id: {
+                    in: songIds
+                }
+            },
+            {
+                select: {
+                    id: true,
+                    albumId: true
+                }
+            }
+        );
+        const notFoundSongIds = songIds.filter(
+            (id) => !songs.map((song) => song.id).includes(id)
+        );
+        if (notFoundSongIds.length != 0) {
+            throw new CustomError(
+                `The following songs are not exist: ${notFoundSongIds}`,
+                StatusCodes.NOT_FOUND
+            );
+        }
+        const assginedSongIds = songs
+            .filter((song) => {
+                return song.albumId != null && song.albumId != albumId;
+            })
+            .map((song) => song.id);
+        if (assginedSongIds.length != 0) {
+            throw new CustomError(
+                `The following songs are already assigned to another album: ${assginedSongIds}`,
+                StatusCodes.BAD_REQUEST
+            );
+        }
+        const unassignedSongIds = songs
+            .filter((song) => !song.albumId)
+            .map((song) => song.id);
+        await albumRepo.addSongs(album, unassignedSongIds);
     }
 };

@@ -4,6 +4,7 @@ interface userRouteConfigProps extends defaultRoutesConfigProps {
     uploadSong: string;
     createAlbum: string;
     addSong: string;
+    addSongs: string;
     setSongs: string;
 }
 
@@ -13,5 +14,6 @@ export const userRouteConfig: userRouteConfigProps = {
     uploadSong: "/songs",
     createAlbum: "/albums",
     addSong: "/albums/:albumId/songs/:songId",
+    addSongs: "/albums/:albumId/songs",
     setSongs: "/albums/:id"
 };

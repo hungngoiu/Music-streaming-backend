@@ -1,6 +1,7 @@
 import { CustomError } from "@/errors/CustomError.js";
 import {
     addSongSchema,
+    addSongsSchema,
     setSongsSchema,
     uploadAlbumSchema
 } from "@/schemas/index.js";
@@ -105,7 +106,7 @@ export const userController = {
         }
     },
 
-    addsong: async (req: Request, res: Response, next: NextFunction) => {
+    addSong: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const albumId = req.params.albumId;
             const songId = req.params.songId;
@@ -122,6 +123,23 @@ export const userController = {
             res.status(StatusCodes.OK).json({
                 status: "success",
                 message: "Add song to album successfully"
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    addSongs: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const albumId = req.params.albumId;
+            const songIds = req.body as z.infer<typeof addSongsSchema>;
+            const user = req.user!;
+
+            await albumService.addSongs(albumId, songIds, user.id);
+
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Add songs to album successfully"
             });
         } catch (err) {
             next(err);
