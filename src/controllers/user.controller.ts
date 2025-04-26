@@ -144,5 +144,21 @@ export const userController = {
         } catch (err) {
             next(err);
         }
+    },
+
+    publicAlbum: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const albumId = req.params.id;
+            const user = req.user!;
+
+            await albumService.publicAlbum(albumId, user.id);
+
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Public album successfully"
+            });
+        } catch (err) {
+            next(err);
+        }
     }
 };

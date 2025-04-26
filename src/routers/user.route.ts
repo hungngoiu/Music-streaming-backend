@@ -19,7 +19,8 @@ router.get(userRouteConfig.status, (req: Request, res: Response) => {
 
 router.post(
     userRouteConfig.uploadSong,
-    verifyTokenMiddleware("at"),
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
     fieldsFileUpload({
         fields: [
             {
@@ -40,7 +41,8 @@ router.post(
 
 router.post(
     userRouteConfig.createAlbum,
-    verifyTokenMiddleware("at"),
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
     singleFileUpload({
         fieldName: "coverImage",
         allowedExtensions: [".jpg", "jpeg", ".png"]
@@ -50,20 +52,30 @@ router.post(
 
 router.patch(
     userRouteConfig.addSong,
-    verifyTokenMiddleware("at"),
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
     userController.addSong
 );
 
 router.patch(
     userRouteConfig.addSongs,
-    verifyTokenMiddleware("at"),
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
     userController.addSongs
 );
 
 router.patch(
     userRouteConfig.setSongs,
-    verifyTokenMiddleware("at"),
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
     userController.setSongs
+);
+
+router.patch(
+    userRouteConfig.publicAlbum,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    userController.publicAlbum
 );
 
 export default router;

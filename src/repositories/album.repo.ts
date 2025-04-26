@@ -44,15 +44,22 @@ export const albumRepo = {
         });
     },
 
-    searchAlbum: async (
+    searchAlbums: async (
         filter: { userId?: string; name?: string },
-        options?: Omit<Prisma.AlbumFindManyArgs, "where">
+        options?: Omit<Prisma.AlbumFindManyArgs, "where">,
+        loginUserId?: string
     ) => {
         const { name = "", userId } = filter;
         const { skip = 0, take = 10 } = options ?? { undefined };
         const sql = userId
-            ? searchAlbumsWithUserId(name, take, skip, userId)
-            : searchAlbums(name, take, skip);
+            ? searchAlbumsWithUserId(
+                  name,
+                  take,
+                  skip,
+                  userId,
+                  loginUserId ? loginUserId : ""
+              )
+            : searchAlbums(name, take, skip, loginUserId ? loginUserId : "");
         const results = await prismaClient.$queryRawTyped(sql);
         const ids = results.map((result) => result.id);
 

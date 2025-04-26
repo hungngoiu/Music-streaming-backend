@@ -142,7 +142,7 @@ export const songService: SongServiceInterface = {
                             password: true
                         },
                         include: {
-                            userProfile: options?.userProfiles ?? false
+                            userProfile: options?.userProfiles
                         }
                     }
                 }

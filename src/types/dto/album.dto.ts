@@ -9,6 +9,16 @@ export type GetAlbumDto = Partial<Pick<Album, "id">> & {
         userProfile?: boolean;
         songs?: boolean;
     };
+    userId?: string;
+};
+
+export type GetAlbumsDto = Partial<Pick<Album, "name" | "userId">> & {
+    options?: {
+        limit?: number;
+        offset?: number;
+        userProfiles?: boolean;
+    };
+    loginUserId?: string;
 };
 
 export type AlbumWithSongs = Album & {

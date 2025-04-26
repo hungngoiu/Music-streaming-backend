@@ -1,6 +1,10 @@
 import { AuthorizationError, CustomError } from "@/errors/index.js";
 import { albumRepo, songRepo } from "@/repositories/index.js";
-import { CreateAlbumDto, GetAlbumDto } from "@/types/dto/index.js";
+import {
+    CreateAlbumDto,
+    GetAlbumDto,
+    GetAlbumsDto
+} from "@/types/dto/index.js";
 import { Album, Prisma, Song } from "@prisma/client";
 import { StatusCodes } from "http-status-codes";
 import sharp from "sharp";
@@ -35,14 +39,18 @@ interface AlbumServiceInterface {
         userId: string
     ) => Promise<void>;
 
-    getAlbum: (
-        args: GetAlbumDto
-    ) => Promise<{
+    getAlbum: (args: GetAlbumDto) => Promise<{
         album: Album & {
             songsWithImageUrl?: { song: Song; coverImageUrl: string | null }[];
         };
         coverImageUrl: string | null;
     }>;
+
+    getAlbums: (
+        args: GetAlbumsDto
+    ) => Promise<{ album: Album; coverImageUrl: string | null }[]>;
+
+    publicAlbum: (albumId: string, userId: string) => Promise<void>;
 }
 
 export const albumService: AlbumServiceInterface = {
@@ -228,9 +236,17 @@ export const albumService: AlbumServiceInterface = {
     },
 
     getAlbum: async (args: GetAlbumDto) => {
-        const { id, options } = args;
+        const { id, options, userId } = args;
         const album = await albumRepo.getOneByFilter(
-            { id },
+            {
+                id,
+                OR: [
+                    {
+                        userId
+                    },
+                    { isPublic: true }
+                ]
+            },
             {
                 include: {
                     user: {
@@ -295,5 +311,71 @@ export const albumService: AlbumServiceInterface = {
             },
             coverImageUrl
         };
+    },
+
+    getAlbums: async (
+        args: GetAlbumsDto
+    ): Promise<{ album: Album; coverImageUrl: string | null }[]> => {
+        const { options, name, userId, loginUserId } = args;
+        const { limit = 10, offset = 0 } = options ?? { undefined };
+        const albums = await albumRepo.searchAlbums(
+            { name, userId },
+            {
+                take: limit,
+                skip: offset,
+                include: {
+                    user: {
+                        omit: {
+                            password: true
+                        },
+                        include: {
+                            userProfile: options?.userProfiles
+                        }
+                    }
+                }
+            },
+            loginUserId
+        );
+        return (
+            await Promise.allSettled(
+                albums.map(async (album) => {
+                    try {
+                        const coverImageUrl = await storageService.generateUrl(
+                            musicsBucketConfigs.name,
+                            album.coverImagePath,
+                            envConfig.IMAGE_URL_EXP
+                        );
+                        return { album, coverImageUrl };
+                    } catch (err) {
+                        if (err instanceof Error) {
+                            logger.warn(err.message);
+                        } else {
+                            logger.warn(
+                                "Caught unknown error when retrieving song image url"
+                            );
+                        }
+                        throw err;
+                    }
+                })
+            )
+        )
+            .filter((result) => result.status == "fulfilled")
+            .map((result) => result.value);
+    },
+    publicAlbum: async (albumId: string, userId: string): Promise<void> => {
+        const album = await albumRepo.getOneByFilter({ id: albumId });
+        if (!album) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
+        }
+        if (userId != album.userId) {
+            throw new AuthorizationError("Album not belong to user");
+        }
+        if (album.isPublic) {
+            throw new CustomError(
+                "Album is already public",
+                StatusCodes.CONFLICT
+            );
+        }
+        await albumRepo.update({ id: albumId }, { isPublic: true });
     }
 };
