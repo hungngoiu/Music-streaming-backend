@@ -23,5 +23,5 @@ export const getSongsSchema = z.object({
 });
 
 export const getSongQuerySchema = z.object({
-    userProfiles: booleanSchema.optional()
+    userProfile: booleanSchema.optional()
 });

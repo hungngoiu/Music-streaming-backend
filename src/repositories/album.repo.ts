@@ -1,5 +1,8 @@
 import { Album, Prisma } from "@prisma/client";
 import prismaClient from "@/databases/prisma.js";
+import { searchAlbums, searchAlbumsWithUserId } from "@prisma/client/sql";
+import { omitPropsFromObject } from "@/utils/object.js";
+import { AlbumWithSongs } from "@/types/dto/index.js";
 
 export const albumRepo = {
     create: (
@@ -15,7 +18,7 @@ export const albumRepo = {
     getOneByFilter: (
         filter: Prisma.AlbumWhereInput,
         options?: Omit<Prisma.AlbumFindFirstArgs, "where">
-    ): Promise<Album | null> => {
+    ): Promise<AlbumWithSongs | null> => {
         return prismaClient.album.findFirst({ where: filter, ...options });
     },
 
@@ -39,6 +42,28 @@ export const albumRepo = {
             where: filter,
             ...options
         });
+    },
+
+    searchAlbum: async (
+        filter: { userId?: string; name?: string },
+        options?: Omit<Prisma.AlbumFindManyArgs, "where">
+    ) => {
+        const { name = "", userId } = filter;
+        const { skip = 0, take = 10 } = options ?? { undefined };
+        const sql = userId
+            ? searchAlbumsWithUserId(name, take, skip, userId)
+            : searchAlbums(name, take, skip);
+        const results = await prismaClient.$queryRawTyped(sql);
+        const ids = results.map((result) => result.id);
+
+        const albums = await prismaClient.album.findMany({
+            where: { id: { in: ids } },
+            ...(options ? omitPropsFromObject(options, ["skip", "take"]) : {})
+        });
+
+        const idOrderMap = new Map(ids.map((id, index) => [id, index]));
+        albums.sort((a, b) => idOrderMap.get(a.id)! - idOrderMap.get(b.id)!);
+        return albums;
     },
 
     connectSongs: async (albumId: string, songIds: string[]) => {

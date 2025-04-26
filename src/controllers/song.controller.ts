@@ -12,11 +12,11 @@ export const songController = {
         try {
             const songId = req.params.id;
             const queries = req.query as z.infer<typeof getSongQuerySchema>;
-            const includeUserProfile = queries.userProfiles;
+            const { userProfile } = queries;
             const { song, coverImageUrl } = await songService.getSong({
                 id: songId,
                 options: {
-                    userProfiles: includeUserProfile
+                    userProfile
                 }
             });
             res.status(StatusCodes.OK).json({
@@ -25,7 +25,8 @@ export const songController = {
                     song: {
                         ...omitPropsFromObject(song, [
                             "audioFilePath",
-                            "coverImagePath"
+                            "coverImagePath",
+                            "albumOrder"
                         ]),
                         coverImageUrl
                     }
@@ -40,7 +41,7 @@ export const songController = {
         try {
             const queries = req.query as z.infer<typeof getSongsSchema>;
             const { limit, offset, userProfiles } = queries;
-            const songsAndUrls = await songService.getSongs({
+            const songsWithImageUrl = await songService.getSongs({
                 ...omitPropsFromObject(queries, ["limit", "offset"]),
                 options: {
                     limit,
@@ -50,19 +51,18 @@ export const songController = {
             });
             res.status(StatusCodes.OK).json({
                 status: "success",
-                data: songsAndUrls.map((songAndUrl) => {
+                data: songsWithImageUrl.map((songAndUrl) => {
                     const { song, coverImageUrl } = songAndUrl;
                     return {
-                        song: {
-                            ...omitPropsFromObject(song, [
-                                "audioFilePath",
-                                "coverImagePath"
-                            ]),
-                            coverImageUrl
-                        }
+                        ...omitPropsFromObject(song, [
+                            "audioFilePath",
+                            "coverImagePath",
+                            "albumOrder"
+                        ]),
+                        coverImageUrl
                     };
                 }),
-                count: songsAndUrls.length
+                count: songsWithImageUrl.length
             });
         } catch (err) {
             next(err);

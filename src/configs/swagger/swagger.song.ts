@@ -97,10 +97,8 @@ export const songRouteDoc: OpenAPIV3.PathsObject = {
                                 message: "string",
                                 data: [
                                     {
-                                        song: {
-                                            ...songExample,
-                                            user: userExample
-                                        }
+                                        ...songExample,
+                                        user: userExample
                                     }
                                 ],
                                 count: 1

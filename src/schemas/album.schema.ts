@@ -1,3 +1,4 @@
+import { booleanSchema } from "@/utils/zod.js";
 import { z } from "zod";
 
 export const uploadAlbumSchema = z.object({
@@ -11,3 +12,8 @@ export const addSongSchema = z.object({
 });
 
 export const addSongsSchema = z.array(z.string());
+
+export const getAlbumQuerySchema = z.object({
+    userProfile: booleanSchema.optional(),
+    songs: booleanSchema.optional()
+});
