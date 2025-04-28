@@ -7,7 +7,7 @@ import {
     isVerifiedUserMiddleware,
     verifyTokenMiddleware
 } from "@/middlewares/auth.middleware.js";
-import { fieldsFileUpload } from "@/middlewares/file.middleware.js";
+import { fieldsFileUpload, singleFileUpload } from "@/middlewares/index.js";
 const router = Router();
 
 router.get(userRouteConfig.status, (req: Request, res: Response) => {
@@ -18,8 +18,9 @@ router.get(userRouteConfig.status, (req: Request, res: Response) => {
 });
 
 router.post(
-    userRouteConfig.upload,
-    verifyTokenMiddleware("at"),
+    userRouteConfig.uploadSong,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
     fieldsFileUpload({
         fields: [
             {
@@ -35,7 +36,46 @@ router.post(
         ]
     }),
     isVerifiedUserMiddleware,
-    userController.upload
+    userController.uploadSong
+);
+
+router.post(
+    userRouteConfig.createAlbum,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    singleFileUpload({
+        fieldName: "coverImage",
+        allowedExtensions: [".jpg", "jpeg", ".png"]
+    }),
+    userController.createAlbum
+);
+
+router.patch(
+    userRouteConfig.addSong,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    userController.addSong
+);
+
+router.patch(
+    userRouteConfig.addSongs,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    userController.addSongs
+);
+
+router.put(
+    userRouteConfig.setSongs,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    userController.setSongs
+);
+
+router.patch(
+    userRouteConfig.publicAlbum,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    userController.publicAlbum
 );
 
 export default router;

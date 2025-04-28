@@ -146,10 +146,7 @@ export const storageService: StorageServiceInterface = {
                 })
             );
             if (results.some((res) => res.status === "rejected")) {
-                throw new CustomError(
-                    "Error while uploading files",
-                    StatusCodes.INTERNAL_SERVER_ERROR
-                );
+                throw new Error("Failed to upload file");
             }
             return { success: true, filePaths };
             // eslint-disable-next-line @typescript-eslint/no-unused-vars

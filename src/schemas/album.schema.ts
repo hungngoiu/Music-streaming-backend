@@ -1,12 +1,24 @@
 import { booleanSchema } from "@/utils/zod.js";
 import { z } from "zod";
 
-export const uploadSongSchema = z.object({
-    name: z.string().min(1, "Name required"),
-    lyric: z.string().optional()
+export const uploadAlbumSchema = z.object({
+    name: z.string().min(1, "Name required")
 });
 
-export const getSongsSchema = z.object({
+export const setSongsSchema = z.array(z.string());
+
+export const addSongSchema = z.object({
+    index: z.number().nonnegative("The index must not be negative").optional()
+});
+
+export const addSongsSchema = z.array(z.string());
+
+export const getAlbumQuerySchema = z.object({
+    userProfile: booleanSchema.optional(),
+    songs: booleanSchema.optional()
+});
+
+export const getAlbumsQuerySchema = z.object({
     name: z.string().optional(),
     userId: z.string().optional(),
     limit: z.coerce
@@ -20,8 +32,4 @@ export const getSongsSchema = z.object({
         .min(0, "The offset must not be negative")
         .optional(),
     userProfiles: booleanSchema.optional()
-});
-
-export const getSongQuerySchema = z.object({
-    userProfile: booleanSchema.optional()
 });

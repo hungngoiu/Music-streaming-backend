@@ -41,7 +41,7 @@ export const errorMiddleware = (
     }
     // custom error
     if (err instanceof CustomError) {
-        logger.info(err.message);
+        logger.info("Custom error: " + err.message);
         res.status(err.statusCode).json({
             status: "failed",
             error: {

@@ -7,6 +7,8 @@ import { authRouteDoc } from "./swagger.auth.js";
 import { userRouteDoc } from "./swagger.user.js";
 import { songSchema } from "./schemas/song.js";
 import { songRouteDoc } from "./swagger.song.js";
+import { albumSchema } from "./schemas/album.js";
+import { albumRouteDoc } from "./swagger.album.js";
 
 export const swaggerOptions: SwaggerUiOptions = {
     swaggerOptions: {
@@ -29,13 +31,15 @@ const document: OpenAPIV3.Document = {
     paths: {
         ...authRouteDoc,
         ...userRouteDoc,
-        ...songRouteDoc
+        ...songRouteDoc,
+        ...albumRouteDoc
     },
     components: {
         schemas: {
             user: userSchema,
             userProfile: userProfileSchema,
-            song: songSchema
+            song: songSchema,
+            album: albumSchema
         },
         securitySchemes: {
             bearerAuth: {
