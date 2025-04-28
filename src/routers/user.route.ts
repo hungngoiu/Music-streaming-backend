@@ -64,7 +64,7 @@ router.patch(
     userController.addSongs
 );
 
-router.patch(
+router.put(
     userRouteConfig.setSongs,
     verifyTokenMiddleware({ type: "at" }),
     isVerifiedUserMiddleware,

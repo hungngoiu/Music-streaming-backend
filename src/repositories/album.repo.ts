@@ -115,7 +115,7 @@ export const albumRepo = {
             const songs = album.songs.sort(
                 (a, b) => a.albumOrder! - b.albumOrder!
             );
-            if (!index || index >= songs.length) {
+            if (index == undefined || index >= songs.length) {
                 await tx.song.update({
                     where: {
                         id: songId
@@ -131,7 +131,7 @@ export const albumRepo = {
                 });
                 return;
             }
-            const prev = songs[index - 1].albumOrder!;
+            const prev = index > 0 ? songs[index - 1].albumOrder! : -1;
             const next = songs[index].albumOrder!;
 
             // check if there is space for insert

@@ -91,7 +91,7 @@ export const userController = {
 
     setSongs: async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const albumId = req.params.id;
+            const albumId = req.params.albumId;
             const songIds = req.body as z.infer<typeof setSongsSchema>;
             const user = req.user!;
 

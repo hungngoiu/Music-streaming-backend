@@ -16,6 +16,6 @@ export const userRouteConfig: userRouteConfigProps = {
     createAlbum: "/albums",
     addSong: "/albums/:albumId/songs/:songId",
     addSongs: "/albums/:albumId/songs",
-    setSongs: "/albums/:id",
+    setSongs: "/albums/:albumId/songs",
     publicAlbum: "/albums/:id/public"
 };
