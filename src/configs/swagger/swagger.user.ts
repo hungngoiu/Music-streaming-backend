@@ -316,5 +316,40 @@ export const userRouteDoc: OpenAPIV3.PathsObject = {
                 },
                 tags: ["users"]
             }
+        },
+    [`${userRouteConfig.index}${userRouteConfig.updateAvatar}`]: {
+        put: {
+            summary: "Update avatar",
+            security: [
+                {
+                    bearerAuth: []
+                }
+            ],
+            requestBody: {
+                required: true,
+                content: {
+                    "multipart/form-data": {
+                        schema: {
+                            type: "object",
+                            required: ["avatar"],
+                            properties: {
+                                avatar: {
+                                    description:
+                                        "Accept .jpg, .jpeg, .png images",
+                                    type: "string",
+                                    format: "base64"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            responses: {
+                "200": {
+                    description: "Update avatar successfully"
+                }
+            },
+            tags: ["users"]
         }
+    }
 };
