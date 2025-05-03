@@ -1,6 +1,7 @@
 import { defaultRoutesConfigProps } from "./config.routes.default.js";
 
 interface userRouteConfigProps extends defaultRoutesConfigProps {
+    updateAvatar: string;
     uploadSong: string;
     createAlbum: string;
     addSong: string;
@@ -12,6 +13,7 @@ interface userRouteConfigProps extends defaultRoutesConfigProps {
 export const userRouteConfig: userRouteConfigProps = {
     index: "/users",
     status: "/status",
+    updateAvatar: "/profiles/avatar",
     uploadSong: "/songs",
     createAlbum: "/albums",
     addSong: "/albums/:albumId/songs/:songId",

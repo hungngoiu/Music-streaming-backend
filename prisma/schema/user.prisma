@@ -20,13 +20,14 @@ model User {
 }
 
 model UserProfile {
-    id     String   @id @default(uuid())
-    userId String   @unique @map("user_id")
-    name   String
-    gender Gender
-    phone  String
-    birth  DateTime
-    user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    id              String   @id @default(uuid())
+    userId          String   @unique @map("user_id")
+    name            String
+    gender          Gender
+    phone           String
+    birth           DateTime
+    avatarImagePath String?  @map("avatar_image_path")
+    user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     @@map("user_profiles")
 }

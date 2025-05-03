@@ -7,6 +7,7 @@ import {
 } from "@/schemas/index.js";
 import { uploadSongSchema } from "@/schemas/song.schema.js";
 import { albumService, songService } from "@/services/index.js";
+import { userService } from "@/services/users.service.js";
 import { omitPropsFromObject } from "@/utils/object.js";
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
@@ -156,6 +157,26 @@ export const userController = {
             res.status(StatusCodes.OK).json({
                 status: "success",
                 message: "Public album successfully"
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    updateAvatar: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const user = req.user!;
+            const file = req.file;
+            if (!file) {
+                throw new CustomError(
+                    "Must upload an avatar image",
+                    StatusCodes.BAD_REQUEST
+                );
+            }
+            await userService.updateAvatar(user.id, file);
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Update avatar successfully"
             });
         } catch (err) {
             next(err);
