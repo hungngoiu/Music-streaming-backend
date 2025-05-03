@@ -44,7 +44,7 @@ export const songService: SongServiceInterface = {
 
         //Format the image before uploading
         const coverImgBuffer = await sharp(coverImg.buffer)
-            .resize(1400, 1400, {
+            .resize(1024, 1024, {
                 fit: "contain"
             })
             .png()

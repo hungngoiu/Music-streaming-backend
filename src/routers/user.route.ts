@@ -78,4 +78,15 @@ router.patch(
     userController.publicAlbum
 );
 
+router.put(
+    userRouteConfig.updateAvatar,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    singleFileUpload({
+        fieldName: "avatar",
+        allowedExtensions: [".jpg", "jpeg", ".png"]
+    }),
+    userController.updateAvatar
+);
+
 export default router;
