@@ -7,7 +7,6 @@
 generator client {
     provider        = "prisma-client-js"
     previewFeatures = ["fullTextSearchPostgres", "postgresqlExtensions", "typedSql"] // comment this to run migration
-    // previewFeatures = ["prismaSchemaFolder"]
 }
 
 datasource db {

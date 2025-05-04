@@ -33,7 +33,7 @@ router.get(
 
 router.get(
     songRouteConfig.streamSong,
-    verifyTokenMiddleware("at"),
+    verifyTokenMiddleware({ type: "at" }),
     isVerifiedUserMiddleware,
     songController.streamSong
 );
