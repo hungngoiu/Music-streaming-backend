@@ -112,7 +112,10 @@ export const albumService: AlbumServiceInterface = {
         }
         const duplicatesIds = getDuplicates(songIds);
         if (duplicatesIds.length != 0) {
-            throw new CustomError("There are duplicate ids in the list", StatusCodes.BAD_REQUEST);
+            throw new CustomError(
+                "There are duplicate ids in the list",
+                StatusCodes.BAD_REQUEST
+            );
         }
         const songs = await songRepo.getManyByFilter(
             {
@@ -137,10 +140,14 @@ export const albumService: AlbumServiceInterface = {
                 StatusCodes.NOT_FOUND
             );
         }
-        const notBelongToUserSongs = songs.filter((song) => song.userId != userId);
+        const notBelongToUserSongs = songs.filter(
+            (song) => song.userId != userId
+        );
         if (notBelongToUserSongs.length != 0) {
             console.log(userId);
-            throw new AuthorizationError(`The following songs are not belong to user: ${notBelongToUserSongs.map((song) => song.id)}`);
+            throw new AuthorizationError(
+                `The following songs are not belong to user: ${notBelongToUserSongs.map((song) => song.id)}`
+            );
         }
         const assignedSongIds = songs
             .filter((song) => {
@@ -210,7 +217,10 @@ export const albumService: AlbumServiceInterface = {
         }
         const duplicatesIds = getDuplicates(songIds);
         if (duplicatesIds.length != 0) {
-            throw new CustomError("There are duplicate ids in the list", StatusCodes.BAD_REQUEST);
+            throw new CustomError(
+                "There are duplicate ids in the list",
+                StatusCodes.BAD_REQUEST
+            );
         }
         const songs = await songRepo.getManyByFilter(
             {
@@ -222,7 +232,7 @@ export const albumService: AlbumServiceInterface = {
                 select: {
                     id: true,
                     albumId: true,
-                    userId: true,
+                    userId: true
                 }
             }
         );
@@ -235,9 +245,13 @@ export const albumService: AlbumServiceInterface = {
                 StatusCodes.NOT_FOUND
             );
         }
-        const notBelongToUserSongs = songs.filter((song) => song.userId != userId);
+        const notBelongToUserSongs = songs.filter(
+            (song) => song.userId != userId
+        );
         if (notBelongToUserSongs.length != 0) {
-            throw new AuthorizationError(`The following songs are not belong to user: ${notBelongToUserSongs.map((song) => song.id)}`);
+            throw new AuthorizationError(
+                `The following songs are not belong to user: ${notBelongToUserSongs.map((song) => song.id)}`
+            );
         }
         const assginedSongIds = songs
             .filter((song) => {
@@ -280,10 +294,10 @@ export const albumService: AlbumServiceInterface = {
                     },
                     songs: options?.songs
                         ? {
-                            orderBy: {
-                                albumOrder: "asc"
-                            }
-                        }
+                              orderBy: {
+                                  albumOrder: "asc"
+                              }
+                          }
                         : undefined
                 }
             }

@@ -9,6 +9,6 @@ export const getDuplicates = <T>(arr: T[]): T[] => {
             seen.add(value);
         }
     }
-    
+
     return Array.from(duplicates);
-}
+};

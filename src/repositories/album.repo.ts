@@ -130,7 +130,7 @@ export const albumRepo = {
                     }
                 });
                 return;
-            };
+            }
             if (index == undefined || index >= songs.length) {
                 await tx.song.update({
                     where: {
