@@ -1,8 +1,8 @@
-interface bucketBaseConfigsInterface {
+interface BucketBaseConfigsInterface {
     name: string;
 }
 
-interface musicsBucketConfigsInterface extends bucketBaseConfigsInterface {
+interface MusicsBucketConfigsInterface extends BucketBaseConfigsInterface {
     audioFolder: {
         name: string;
     };
@@ -11,12 +11,25 @@ interface musicsBucketConfigsInterface extends bucketBaseConfigsInterface {
     };
 }
 
-export const musicsBucketConfigs: musicsBucketConfigsInterface = {
+interface UsersBucketConfigsInterface extends BucketBaseConfigsInterface {
+    avatarFolder: {
+        name: string;
+    };
+}
+
+export const musicsBucketConfigs: MusicsBucketConfigsInterface = {
     name: "musics",
     audioFolder: {
         name: "audio"
     },
     coverFolder: {
         name: "covers"
+    }
+};
+
+export const usersBucketConfigs: UsersBucketConfigsInterface = {
+    name: "users",
+    avatarFolder: {
+        name: "avatar"
     }
 };

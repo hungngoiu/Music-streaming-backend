@@ -2,7 +2,9 @@ import { Router } from "express";
 import authRouter from "./auth.route.js";
 import userRouter from "./user.route.js";
 import songRouter from "./song.route.js";
+import albumRouter from "./album.route.js";
 import {
+    albumRouteConfig,
     authRouteConfig,
     songRouteConfig,
     userRouteConfig
@@ -28,6 +30,10 @@ const apisConfigs: configProps[] = [
     {
         index: songRouteConfig.index,
         router: songRouter
+    },
+    {
+        index: albumRouteConfig.index,
+        router: albumRouter
     }
 ];
 

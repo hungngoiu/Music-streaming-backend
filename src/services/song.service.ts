@@ -1,5 +1,4 @@
 import { CustomError } from "@/errors/index.js";
-import { userRepo } from "@/repositories/user.repo.js";
 import {
     CreateSongDto,
     GetSongDto,
@@ -9,9 +8,10 @@ import { Song } from "@prisma/client";
 import { StatusCodes } from "http-status-codes";
 import { storageService } from "./storage.service.js";
 import { musicsBucketConfigs } from "@/configs/storage.config.js";
-import { songRepo } from "@/repositories/song.repo.js";
+import { songRepo, userRepo } from "@/repositories/index.js";
 import sharp from "sharp";
 import { envConfig } from "@/configs/env.config.js";
+import logger from "@/utils/logger.js";
 interface SongServiceInterface {
     createSong: (
         data: CreateSongDto,
@@ -44,7 +44,7 @@ export const songService: SongServiceInterface = {
 
         //Format the image before uploading
         const coverImgBuffer = await sharp(coverImg.buffer)
-            .resize(1400, 1400, {
+            .resize(1024, 1024, {
                 fit: "contain"
             })
             .png()
@@ -72,7 +72,7 @@ export const songService: SongServiceInterface = {
         const audioFilePath = filePaths[0];
         const coverImagePath = filePaths[1];
         try {
-            const song = await songRepo.createOne({
+            const song = await songRepo.create({
                 ...data,
                 audioFilePath: audioFilePath,
                 coverImagePath: coverImagePath,
@@ -100,7 +100,7 @@ export const songService: SongServiceInterface = {
         coverImageUrl: string | null;
     }> => {
         const { id, options } = args;
-        const song = await songRepo.getOnebyFilter(
+        const song = await songRepo.getOneByFilter(
             { id },
             {
                 include: {
@@ -109,7 +109,7 @@ export const songService: SongServiceInterface = {
                             password: true
                         },
                         include: {
-                            userProfile: options?.userProfiles ?? false
+                            ...options
                         }
                     }
                 }
@@ -142,26 +142,41 @@ export const songService: SongServiceInterface = {
                             password: true
                         },
                         include: {
-                            userProfile: options?.userProfiles ?? false
+                            userProfile: options?.userProfiles
                         }
                     }
                 }
             }
         );
-        return Promise.all(
-            songs.map(async (song) => {
-                const coverImageUrl = await storageService.generateUrl(
-                    musicsBucketConfigs.name,
-                    song.coverImagePath,
-                    envConfig.IMAGE_URL_EXP
-                );
-                return { song, coverImageUrl };
-            })
-        );
+        return (
+            await Promise.allSettled(
+                songs.map(async (song) => {
+                    try {
+                        const coverImageUrl = await storageService.generateUrl(
+                            musicsBucketConfigs.name,
+                            song.coverImagePath,
+                            envConfig.IMAGE_URL_EXP
+                        );
+                        return { song, coverImageUrl };
+                    } catch (err) {
+                        if (err instanceof Error) {
+                            logger.warn(err.message);
+                        } else {
+                            logger.warn(
+                                "Caught unknown error when retrieving song image url"
+                            );
+                        }
+                        throw err;
+                    }
+                })
+            )
+        )
+            .filter((result) => result.status == "fulfilled")
+            .map((result) => result.value);
     },
 
     getSongSignedAudioUrl: async (id: string) => {
-        const song = await songRepo.getOnebyFilter({ id });
+        const song = await songRepo.getOneByFilter({ id });
         if (!song) {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }

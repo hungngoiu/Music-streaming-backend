@@ -7,7 +7,7 @@ export type CreateSongDto = {
 
 export type GetSongDto = Partial<Pick<Song, "id">> & {
     options?: {
-        userProfiles?: boolean;
+        userProfile?: boolean;
     };
 };
 

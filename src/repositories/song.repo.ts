@@ -1,10 +1,10 @@
 import prismaClient from "@/databases/prisma.js";
 import { omitPropsFromObject } from "@/utils/object.js";
 import { Prisma, Song } from "@prisma/client";
-import { searchSongs, searchSongswithUserId } from "@prisma/client/sql";
+import { searchSongs, searchSongsWithUserId } from "@prisma/client/sql";
 
 export const songRepo = {
-    createOne: (
+    create: (
         data: Prisma.SongCreateInput,
         options?: Omit<Prisma.SongCreateArgs, "data">
     ): Promise<Song> => {
@@ -14,7 +14,7 @@ export const songRepo = {
         });
     },
 
-    getOnebyFilter: (
+    getOneByFilter: (
         filter: Prisma.SongWhereInput,
         options?: Omit<Prisma.SongFindFirstArgs, "where">
     ): Promise<Song | null> => {
@@ -41,7 +41,7 @@ export const songRepo = {
         const { name = "", userId } = filter;
         const { skip = 0, take = 10 } = options ?? { undefined };
         const sql = userId
-            ? searchSongswithUserId(name, take, skip, userId)
+            ? searchSongsWithUserId(name, take, skip, userId)
             : searchSongs(name, take, skip);
         const results = await prismaClient.$queryRawTyped(sql);
         const ids = results.map((result) => result.id);
@@ -64,6 +64,18 @@ export const songRepo = {
         return prismaClient.song.update({
             where: filter,
             data: data,
+            ...options
+        });
+    },
+
+    updateMany: (
+        filter: Prisma.SongWhereInput,
+        data: Prisma.SongUpdateInput,
+        options?: Omit<Prisma.SongUpdateManyArgs, "where" | "data">
+    ) => {
+        return prismaClient.song.updateMany({
+            where: filter,
+            data,
             ...options
         });
     },
