@@ -13,6 +13,7 @@ import { musicsBucketConfigs } from "@/configs/storage.config.js";
 import { envConfig } from "@/configs/index.js";
 import logger from "@/utils/logger.js";
 import { omitPropsFromObject } from "@/utils/object.js";
+import { getDuplicates } from "@/utils/array.js";
 
 interface AlbumServiceInterface {
     createAlbum: (
@@ -109,7 +110,10 @@ export const albumService: AlbumServiceInterface = {
         if (userId != album.userId) {
             throw new AuthorizationError("Album not belong to user");
         }
-
+        const duplicatesIds = getDuplicates(songIds);
+        if (duplicatesIds.length != 0) {
+            throw new CustomError("There are duplicate ids in the list", StatusCodes.BAD_REQUEST);
+        }
         const songs = await songRepo.getManyByFilter(
             {
                 id: {
@@ -119,7 +123,8 @@ export const albumService: AlbumServiceInterface = {
             {
                 select: {
                     id: true,
-                    albumId: true
+                    albumId: true,
+                    userId: true
                 }
             }
         );
@@ -131,6 +136,11 @@ export const albumService: AlbumServiceInterface = {
                 `The following songs are not exist: ${notFoundSongIds}`,
                 StatusCodes.NOT_FOUND
             );
+        }
+        const notBelongToUserSongs = songs.filter((song) => song.userId != userId);
+        if (notBelongToUserSongs.length != 0) {
+            console.log(userId);
+            throw new AuthorizationError(`The following songs are not belong to user: ${notBelongToUserSongs.map((song) => song.id)}`);
         }
         const assignedSongIds = songs
             .filter((song) => {
@@ -173,6 +183,9 @@ export const albumService: AlbumServiceInterface = {
         if (!song) {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }
+        if (song.userId != userId) {
+            throw new AuthorizationError("Song not belong to user");
+        }
         if (album.songs.map((song) => song.id).includes(songId)) {
             throw new CustomError(
                 "The song is already existed in the album",
@@ -195,7 +208,10 @@ export const albumService: AlbumServiceInterface = {
         if (userId != album.userId) {
             throw new AuthorizationError("Album not belong to user");
         }
-
+        const duplicatesIds = getDuplicates(songIds);
+        if (duplicatesIds.length != 0) {
+            throw new CustomError("There are duplicate ids in the list", StatusCodes.BAD_REQUEST);
+        }
         const songs = await songRepo.getManyByFilter(
             {
                 id: {
@@ -205,7 +221,8 @@ export const albumService: AlbumServiceInterface = {
             {
                 select: {
                     id: true,
-                    albumId: true
+                    albumId: true,
+                    userId: true,
                 }
             }
         );
@@ -217,6 +234,10 @@ export const albumService: AlbumServiceInterface = {
                 `The following songs are not exist: ${notFoundSongIds}`,
                 StatusCodes.NOT_FOUND
             );
+        }
+        const notBelongToUserSongs = songs.filter((song) => song.userId != userId);
+        if (notBelongToUserSongs.length != 0) {
+            throw new AuthorizationError(`The following songs are not belong to user: ${notBelongToUserSongs.map((song) => song.id)}`);
         }
         const assginedSongIds = songs
             .filter((song) => {
@@ -259,10 +280,10 @@ export const albumService: AlbumServiceInterface = {
                     },
                     songs: options?.songs
                         ? {
-                              orderBy: {
-                                  albumOrder: "asc"
-                              }
-                          }
+                            orderBy: {
+                                albumOrder: "asc"
+                            }
+                        }
                         : undefined
                 }
             }

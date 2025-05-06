@@ -16,8 +16,8 @@ export const userRouteConfig: userRouteConfigProps = {
     updateAvatar: "/profiles/avatar",
     uploadSong: "/songs",
     createAlbum: "/albums",
-    addSong: "/albums/:albumId/songs/:songId",
-    addSongs: "/albums/:albumId/songs",
-    setSongs: "/albums/:albumId/songs",
+    addSong: "/albums/:albumId/songs/insert/:songId",
+    addSongs: "/albums/:albumId/songs/append",
+    setSongs: "/albums/:albumId/songs/set",
     publicAlbum: "/albums/:id/public"
 };

@@ -48,7 +48,8 @@ export const userController = {
                     song: {
                         ...omitPropsFromObject(song, [
                             "audioFilePath",
-                            "coverImagePath"
+                            "coverImagePath",
+                            "albumOrder"
                         ]),
                         coverImageUrl
                     }
