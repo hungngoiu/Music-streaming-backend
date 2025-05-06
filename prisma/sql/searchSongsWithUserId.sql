@@ -1,8 +1,7 @@
 -- @param {String} $1:query
 -- @param {Int} $2:limit
 -- @param {Int} $3:offset
--- @param {String} $4: userId
-
+-- @param {String} $4:userId
 
 SELECT id
 FROM songs

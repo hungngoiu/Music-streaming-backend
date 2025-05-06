@@ -115,6 +115,22 @@ export const albumRepo = {
             const songs = album.songs.sort(
                 (a, b) => a.albumOrder! - b.albumOrder!
             );
+            if (songs.length == 0) {
+                await tx.song.update({
+                    where: {
+                        id: songId
+                    },
+                    data: {
+                        albumOrder: 10,
+                        album: {
+                            connect: {
+                                id: album.id
+                            }
+                        }
+                    }
+                });
+                return;
+            }
             if (index == undefined || index >= songs.length) {
                 await tx.song.update({
                     where: {

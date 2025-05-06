@@ -66,6 +66,13 @@ export const songRouteDoc: OpenAPIV3.PathsObject = {
                 },
                 {
                     in: "query",
+                    name: "userId",
+                    schema: {
+                        type: "string"
+                    }
+                },
+                {
+                    in: "query",
                     name: "limit",
                     description: "Number of results",
                     schema: {

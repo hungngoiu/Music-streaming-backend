@@ -29,19 +29,19 @@ router.post(
 
 router.post(
     authRouteConfig.refreshToken,
-    verifyTokenMiddleware({type: "rt"}),
+    verifyTokenMiddleware({ type: "rt" }),
     authController.refreshToken
 );
 
 router.post(
     authRouteConfig.sendVerification,
-    verifyTokenMiddleware({type: "at"}),
+    verifyTokenMiddleware({ type: "at" }),
     authController.sendVerification
 );
 
 router.post(
     authRouteConfig.verifyCode,
-    verifyTokenMiddleware({type: "at"}),
+    verifyTokenMiddleware({ type: "at" }),
     authController.verifyCode
 );
 
