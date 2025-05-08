@@ -8,6 +8,8 @@ import {
     verifyTokenMiddleware
 } from "@/middlewares/auth.middleware.js";
 import { fieldsFileUpload, singleFileUpload } from "@/middlewares/index.js";
+import { dataValidation } from "@/validations/data.validations.js";
+import { updateUserProfileSchema } from "@/schemas/user.shema.js";
 const router = Router();
 
 router.get(userRouteConfig.status, (req: Request, res: Response) => {
@@ -89,4 +91,11 @@ router.put(
     userController.updateAvatar
 );
 
+router.patch(
+    userRouteConfig.updateProfile,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    dataValidation(updateUserProfileSchema, "body"),
+    userController.updateProfile
+);
 export default router;

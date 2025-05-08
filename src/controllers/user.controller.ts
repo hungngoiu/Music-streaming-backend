@@ -6,6 +6,7 @@ import {
     uploadAlbumSchema
 } from "@/schemas/index.js";
 import { uploadSongSchema } from "@/schemas/song.schema.js";
+import { updateUserProfileSchema } from "@/schemas/user.shema.js";
 import { albumService, songService } from "@/services/index.js";
 import { userService } from "@/services/users.service.js";
 import { omitPropsFromObject } from "@/utils/object.js";
@@ -14,6 +15,7 @@ import { StatusCodes } from "http-status-codes";
 import { z } from "zod";
 
 export const userController = {
+    /* ---------------------------------- Song ---------------------------------- */
     uploadSong: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const bodyData = req.body as z.infer<typeof uploadSongSchema>;
@@ -60,6 +62,7 @@ export const userController = {
         }
     },
 
+    /* ---------------------------------- Album --------------------------------- */
     createAlbum: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const bodyData = req.body as z.infer<typeof uploadAlbumSchema>;
@@ -164,6 +167,7 @@ export const userController = {
         }
     },
 
+    /* -------------------------------- Profiles -------------------------------- */
     updateAvatar: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const user = req.user!;
@@ -178,6 +182,29 @@ export const userController = {
             res.status(StatusCodes.OK).json({
                 status: "success",
                 message: "Update avatar successfully"
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    updateProfile: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const user = req.user!;
+            const bodyData = req.body as z.infer<
+                typeof updateUserProfileSchema
+            >;
+            const birth = bodyData.birth ? new Date(bodyData.birth) : null;
+            const updatedUser = await userService.updateProfile(user.id, {
+                ...omitPropsFromObject(bodyData, "birth"),
+                ...(birth ? { birth } : {})
+            });
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Update profile successfully",
+                data: {
+                    user: omitPropsFromObject(updatedUser, "password")
+                }
             });
         } catch (err) {
             next(err);
