@@ -78,6 +78,10 @@ export const authRouteDoc: OpenAPIV3.PathsObject = {
                                         type: "string",
                                         example: "success"
                                     },
+                                    message: {
+                                        type: "string",
+                                        example: "User sign up successfully"
+                                    },
                                     data: {
                                         type: "object",
                                         properties: {
@@ -160,7 +164,10 @@ export const authRouteDoc: OpenAPIV3.PathsObject = {
                                         type: "string",
                                         example: "success"
                                     },
-                                    message: { type: "string" },
+                                    message: {
+                                        type: "string",
+                                        example: "User sign in successfully"
+                                    },
                                     data: {
                                         type: "object",
                                         properties: {
