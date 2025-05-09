@@ -1,6 +1,7 @@
 import { OpenAPIV3 } from "openapi-types";
 import { userRouteConfig } from "../routes/index.js";
 import { convertToOpenApiRoute } from "@/utils/swagger.js";
+import { userExample, userProfileExample } from "./schemas/user.js";
 
 export const userRouteDoc: OpenAPIV3.PathsObject = {
     [`${userRouteConfig.index}${userRouteConfig.uploadSong}`]: {
@@ -347,6 +348,93 @@ export const userRouteDoc: OpenAPIV3.PathsObject = {
             responses: {
                 "200": {
                     description: "Update avatar successfully"
+                }
+            },
+            tags: ["users"]
+        }
+    },
+    [`${userRouteConfig.index}${userRouteConfig.updateProfile}`]: {
+        patch: {
+            summary: "Update profile",
+            security: [
+                {
+                    bearerAuth: []
+                }
+            ],
+            requestBody: {
+                content: {
+                    "application/json": {
+                        schema: {
+                            type: "object",
+                            properties: {
+                                name: {
+                                    type: "string",
+                                    example: "John Doe"
+                                },
+                                birth: {
+                                    type: "string",
+                                    format: "date",
+                                    example: "1990-05-15"
+                                },
+                                gender: {
+                                    type: "string",
+                                    example: "male"
+                                },
+                                phone: {
+                                    type: "string",
+                                    example: "+1234567890"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            responses: {
+                "200": {
+                    description: "Update profile successfully",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    status: {
+                                        type: "string",
+                                        example: "success"
+                                    },
+                                    messgae: {
+                                        type: "string",
+                                        example: "Update profile successfully"
+                                    },
+                                    data: {
+                                        type: "object",
+                                        properties: {
+                                            user: {
+                                                allOf: [
+                                                    {
+                                                        $ref: "#/components/schemas/user"
+                                                    },
+                                                    {
+                                                        type: "object",
+                                                        properties: {
+                                                            userProfile: {
+                                                                $ref: "#/components/schemas/userProfile"
+                                                            }
+                                                        }
+                                                    }
+                                                ],
+                                                example: {
+                                                    ...userExample,
+                                                    userProfile: {
+                                                        ...userProfileExample
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             },
             tags: ["users"]

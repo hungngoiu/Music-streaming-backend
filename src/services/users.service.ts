@@ -4,12 +4,16 @@ import { StatusCodes } from "http-status-codes";
 import sharp from "sharp";
 import { storageService } from "./storage.service.js";
 import { usersBucketConfigs } from "@/configs/storage.config.js";
+import { UpdateProfileDto } from "@/types/dto/user.dto.js";
+import { User } from "@prisma/client";
 
 interface UserServiceInterface {
     updateAvatar: (
         userId: string,
         avatar: Express.Multer.File
     ) => Promise<void>;
+
+    updateProfile: (userId: string, data: UpdateProfileDto) => Promise<User>;
 }
 
 export const userService: UserServiceInterface = {
@@ -54,5 +58,30 @@ export const userService: UserServiceInterface = {
                 oldAvatarImagePath
             );
         }
+    },
+    updateProfile: async (userId: string, data: UpdateProfileDto) => {
+        const userProfile = await userRepo.getOneProfileByfilter({
+            userId: userId
+        });
+        if (!userProfile) {
+            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
+        }
+        return await userRepo.update(
+            { id: userId },
+            {
+                userProfile: {
+                    update: data
+                }
+            },
+            {
+                include: {
+                    userProfile: {
+                        omit: {
+                            avatarImagePath: true
+                        }
+                    }
+                }
+            }
+        );
     }
 };
