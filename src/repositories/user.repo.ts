@@ -1,5 +1,7 @@
 import prismaClient from "@/databases/prisma.js";
+import { omitPropsFromObject } from "@/utils/object.js";
 import { Prisma, User, UserProfile } from "@prisma/client";
+import { searchUser } from "@prisma/client/sql";
 
 export const userRepo = {
     /* ---------------------------------- User ---------------------------------- */
@@ -21,6 +23,27 @@ export const userRepo = {
             ...options
         });
     },
+
+    searchUsers: async (
+        filter: { name?: string },
+        options?: Omit<Prisma.UserFindManyArgs, "where">
+    ): Promise<User[]> => {
+        const { name = "" } = filter;
+        const { skip = 0, take = 10 } = options ?? { undefined };
+        const sql = searchUser(name, take, skip);
+        const results = await prismaClient.$queryRawTyped(sql);
+        const ids = results.map((result) => result.user_id);
+
+        const users = await prismaClient.user.findMany({
+            where: { id: { in: ids } },
+            ...(options ? omitPropsFromObject(options, ["skip", "take"]) : {})
+        });
+
+        const idOrderMap = new Map(ids.map((id, index) => [id, index]));
+        users.sort((a, b) => idOrderMap.get(a.id)! - idOrderMap.get(b.id)!);
+        return users;
+    },
+
     create: (
         data: Prisma.UserCreateInput,
         options?: Omit<Prisma.UserCreateArgs, "data">

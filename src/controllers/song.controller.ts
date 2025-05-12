@@ -51,6 +51,7 @@ export const songController = {
             });
             res.status(StatusCodes.OK).json({
                 status: "success",
+                message: "Get songs successfully",
                 data: songsWithImageUrl.map((songAndUrl) => {
                     const { song, coverImageUrl } = songAndUrl;
                     return {

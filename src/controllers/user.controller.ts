@@ -6,7 +6,10 @@ import {
     uploadAlbumSchema
 } from "@/schemas/index.js";
 import { uploadSongSchema } from "@/schemas/song.schema.js";
-import { updateUserProfileSchema } from "@/schemas/user.shema.js";
+import {
+    getUsersQuerySchema,
+    updateUserProfileSchema
+} from "@/schemas/user.shema.js";
 import { albumService, songService } from "@/services/index.js";
 import { userService } from "@/services/users.service.js";
 import { omitPropsFromObject } from "@/utils/object.js";
@@ -205,6 +208,44 @@ export const userController = {
                 data: {
                     user: omitPropsFromObject(updatedUser, "password")
                 }
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    getUser: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const userId = req.params.id;
+            const user = await userService.getUser(userId);
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Get user successfully",
+                data: {
+                    user
+                }
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    getUsers: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const queries = req.query as z.infer<typeof getUsersQuerySchema>;
+            const { limit, offset } = queries;
+            const users = await userService.getUsers({
+                ...omitPropsFromObject(queries, ["limit", "offset"]),
+                options: {
+                    limit,
+                    offset
+                }
+            });
+
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Get users successfully",
+                data: users
             });
         } catch (err) {
             next(err);

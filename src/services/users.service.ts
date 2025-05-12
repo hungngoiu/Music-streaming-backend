@@ -4,16 +4,20 @@ import { StatusCodes } from "http-status-codes";
 import sharp from "sharp";
 import { storageService } from "./storage.service.js";
 import { usersBucketConfigs } from "@/configs/storage.config.js";
-import { UpdateProfileDto } from "@/types/dto/user.dto.js";
-import { User } from "@prisma/client";
+import { GetUsersDto, UpdateProfileDto, UserDto } from "@/types/dto/index.js";
+import { Prisma, User } from "@prisma/client";
+import { envConfig } from "@/configs/index.js";
+import { omitPropsFromObject } from "@/utils/object.js";
+import logger from "@/utils/logger.js";
 
 interface UserServiceInterface {
     updateAvatar: (
         userId: string,
         avatar: Express.Multer.File
     ) => Promise<void>;
-
     updateProfile: (userId: string, data: UpdateProfileDto) => Promise<User>;
+    getUser: (userId: string) => Promise<UserDto>;
+    getUsers: (args: GetUsersDto) => Promise<UserDto[]>;
 }
 
 export const userService: UserServiceInterface = {
@@ -83,5 +87,88 @@ export const userService: UserServiceInterface = {
                 }
             }
         );
+    },
+
+    getUser: async (userId: string) => {
+        const user = (await userRepo.getOneByFilter(
+            { id: userId },
+            { include: { userProfile: true } }
+        )) as Prisma.UserGetPayload<{
+            include: { userProfile: true };
+        }>;
+        if (!user) {
+            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
+        }
+        let avatarImageUrl = null;
+        if (user.userProfile!.avatarImagePath != null) {
+            avatarImageUrl = await storageService.generateUrl(
+                usersBucketConfigs.name,
+                user.userProfile!.avatarImagePath!,
+                envConfig.IMAGE_URL_EXP
+            );
+        }
+        return {
+            ...omitPropsFromObject(user, ["password", "userProfile"]),
+            userProfile: {
+                ...omitPropsFromObject(user.userProfile!, "avatarImagePath"),
+                avatarImageUrl
+            }
+        };
+    },
+
+    getUsers: async (args: GetUsersDto): Promise<UserDto[]> => {
+        const { options, name } = args;
+        const { limit = 10, offset = 0 } = options ?? { undefined };
+        const users = (await userRepo.searchUsers(
+            { name },
+            {
+                take: limit,
+                skip: offset,
+                include: {
+                    userProfile: true
+                }
+            }
+        )) as Prisma.UserGetPayload<{ include: { userProfile: true } }>[];
+        return (
+            await Promise.allSettled(
+                users.map(async (user) => {
+                    let avatarImageUrl = null;
+
+                    try {
+                        if (user.userProfile!.avatarImagePath != null) {
+                            avatarImageUrl = await storageService.generateUrl(
+                                usersBucketConfigs.name,
+                                user.userProfile!.avatarImagePath!,
+                                envConfig.IMAGE_URL_EXP
+                            );
+                        }
+                        return {
+                            ...omitPropsFromObject(user, [
+                                "password",
+                                "userProfile"
+                            ]),
+                            userProfile: {
+                                ...omitPropsFromObject(
+                                    user.userProfile!,
+                                    "avatarImagePath"
+                                ),
+                                avatarImageUrl
+                            }
+                        };
+                    } catch (err) {
+                        if (err instanceof Error) {
+                            logger.warn(err.message);
+                        } else {
+                            logger.warn(
+                                "Caught unknown error when retrieving avatar image url"
+                            );
+                        }
+                        throw err;
+                    }
+                })
+            )
+        )
+            .filter((result) => result.status == "fulfilled")
+            .map((result) => result.value);
     }
 };

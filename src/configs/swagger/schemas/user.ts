@@ -28,7 +28,8 @@ export const userProfileExample = {
     name: "John Doe",
     gender: "male",
     phone: "+1234567890",
-    birth: "1990-05-15T00:00:00.000Z"
+    birth: "1990-05-15T00:00:00.000Z",
+    avatarImageUrl: "avatarUrl"
 };
 
 export const userProfileSchema: OpenAPIV3.SchemaObject = {
@@ -39,7 +40,8 @@ export const userProfileSchema: OpenAPIV3.SchemaObject = {
         name: { type: "string" },
         gender: { type: "string" },
         phone: { type: "string" },
-        birth: { type: "string", format: "date-time" }
+        birth: { type: "string", format: "date-time" },
+        avatarImageUrl: { type: "string", format: "uri" }
     },
     example: userProfileExample
 };
