@@ -30,4 +30,5 @@ model UserProfile {
     user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     @@map("user_profiles")
+    @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
 }
