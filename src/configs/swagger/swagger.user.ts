@@ -439,5 +439,97 @@ export const userRouteDoc: OpenAPIV3.PathsObject = {
             },
             tags: ["users"]
         }
+    },
+
+    [`${userRouteConfig.index}${userRouteConfig.getUser}`]: {
+        get: {
+            summary: "Get a user",
+            parameters: [
+                {
+                    in: "path",
+                    name: "id",
+                    description: "Id of the user",
+                    schema: {
+                        type: "string"
+                    },
+                    required: true
+                }
+            ],
+            responses: {
+                "200": {
+                    description: "Get user successfully",
+                    content: {
+                        "application/json": {
+                            example: {
+                                status: "success",
+                                message: "string",
+                                data: {
+                                    user: {
+                                        ...userExample,
+                                        userProfile: userProfileExample
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "404": {
+                    description: "User not found"
+                }
+            },
+            tags: ["users"]
+        }
+    },
+
+    [`${userRouteConfig.index}${userRouteConfig.getUsers}`]: {
+        get: {
+            summary: "Search a user by name",
+            parameters: [
+                {
+                    in: "query",
+                    name: "name",
+                    schema: {
+                        type: "string"
+                    }
+                },
+                {
+                    in: "query",
+                    name: "limit",
+                    description: "Number of results",
+                    schema: {
+                        type: "integer"
+                    }
+                },
+                {
+                    in: "query",
+                    name: "offset",
+                    description: "Offset of the results",
+                    schema: {
+                        type: "integer"
+                    }
+                }
+            ],
+            responses: {
+                "200": {
+                    description: "Get users successfully",
+                    content: {
+                        "application/json": {
+                            example: {
+                                status: "success",
+                                message: "string",
+                                data: [
+                                    {
+                                        ...userExample,
+                                        userProfile: userProfileExample
+                                    }
+                                ],
+                                count: 1
+                            }
+                        }
+                    }
+                }
+            },
+            tags: ["users"]
+        }
     }
 };

@@ -9,7 +9,10 @@ import {
 } from "@/middlewares/auth.middleware.js";
 import { fieldsFileUpload, singleFileUpload } from "@/middlewares/index.js";
 import { dataValidation } from "@/validations/data.validations.js";
-import { updateUserProfileSchema } from "@/schemas/user.shema.js";
+import {
+    getUsersQuerySchema,
+    updateUserProfileSchema
+} from "@/schemas/user.shema.js";
 const router = Router();
 
 router.get(userRouteConfig.status, (req: Request, res: Response) => {
@@ -98,4 +101,13 @@ router.patch(
     dataValidation(updateUserProfileSchema, "body"),
     userController.updateProfile
 );
+
+router.get(
+    userRouteConfig.getUsers,
+    dataValidation(getUsersQuerySchema, "query"),
+    userController.getUsers
+);
+
+router.get(userRouteConfig.getUser, userController.getUser);
+
 export default router;
