@@ -5,7 +5,7 @@ import { AuthenticationError } from "@/errors/index.js";
 import { StatusCodes } from "http-status-codes";
 import { omitPropsFromObject, pickPropsFromObject } from "@/utils/object.js";
 import { compareHash, generateHash } from "@/utils/bcrypt.js";
-import { SignInDto, SignUpDto } from "@/types/dto/index.js";
+import { SignInDto, SignUpDto, UserDto } from "@/types/dto/index.js";
 import { generateJwt } from "@/utils/jwt.js";
 import { UserPayload } from "@/types/jwt.js";
 import { randomInt } from "crypto";
@@ -14,13 +14,14 @@ import { redisService } from "./redis.service.js";
 import { timeToMs } from "@/utils/time.js";
 import { envConfig } from "@/configs/env.config.js";
 import { namespaces } from "@/configs/redis.config.js";
+import { userModelToDto } from "@/utils/modelToDto.js";
 interface AuthServiceInterface {
     signUp: (
         data: SignUpDto
-    ) => Promise<{ user: User; accessToken: string; refreshToken: string }>;
+    ) => Promise<{ user: UserDto; accessToken: string; refreshToken: string }>;
     signIn: (
         data: SignInDto
-    ) => Promise<{ user: User; accessToken: string; refreshToken: string }>;
+    ) => Promise<{ user: UserDto; accessToken: string; refreshToken: string }>;
     refreshToken: (
         data: UserPayload,
         receivedRefreshToken: string
@@ -105,7 +106,7 @@ export const authService: AuthServiceInterface = {
             },
             { EX: timeToMs(envConfig.JWT_REFRESH_EXP) / 1000 }
         );
-        return { user, accessToken, refreshToken };
+        return { user: await userModelToDto(user), accessToken, refreshToken };
     },
     signIn: async (data: SignInDto) => {
         const { username, password } = data;
@@ -140,7 +141,7 @@ export const authService: AuthServiceInterface = {
             },
             { EX: timeToMs(envConfig.JWT_REFRESH_EXP) / 1000 }
         );
-        return { user, accessToken, refreshToken };
+        return { user: await userModelToDto(user), accessToken, refreshToken };
     },
     refreshToken: async (data: UserPayload, receivedRefreshToken: string) => {
         const { id } = data;

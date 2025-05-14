@@ -30,7 +30,7 @@ export const authController = {
                     status: "success",
                     message: "User sign in successfully",
                     data: {
-                        user: omitPropsFromObject(user, "password"),
+                        user,
                         accessToken,
                         refreshToken
                     }
@@ -53,7 +53,7 @@ export const authController = {
                 }
             };
             const {
-                user: createdUser,
+                user,
                 accessToken,
                 refreshToken
             } = await authService.signUp(signUpdata);
@@ -69,7 +69,7 @@ export const authController = {
                     status: "success",
                     message: "User sign up successfully",
                     data: {
-                        user: omitPropsFromObject(createdUser, "password"),
+                        user,
                         accessToken,
                         refreshToken
                     }
