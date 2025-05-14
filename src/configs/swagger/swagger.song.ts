@@ -21,7 +21,7 @@ export const songRouteDoc: OpenAPIV3.PathsObject = {
                     },
                     {
                         in: "query",
-                        name: "userProfiles",
+                        name: "userProfile",
                         description: "Optional fetching user profile",
                         schema: {
                             type: "boolean"

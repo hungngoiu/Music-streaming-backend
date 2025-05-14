@@ -6,9 +6,7 @@ import { storageService } from "./storage.service.js";
 import { usersBucketConfigs } from "@/configs/storage.config.js";
 import { GetUsersDto, UpdateProfileDto, UserDto } from "@/types/dto/index.js";
 import { Prisma, User } from "@prisma/client";
-import { envConfig } from "@/configs/index.js";
-import { omitPropsFromObject } from "@/utils/object.js";
-import logger from "@/utils/logger.js";
+import { userModelToDto } from "@/utils/modelToDto.js";
 
 interface UserServiceInterface {
     updateAvatar: (
@@ -99,27 +97,13 @@ export const userService: UserServiceInterface = {
         if (!user) {
             throw new CustomError("User not found", StatusCodes.NOT_FOUND);
         }
-        let avatarImageUrl = null;
-        if (user.userProfile!.avatarImagePath != null) {
-            avatarImageUrl = await storageService.generateUrl(
-                usersBucketConfigs.name,
-                user.userProfile!.avatarImagePath!,
-                envConfig.IMAGE_URL_EXP
-            );
-        }
-        return {
-            ...omitPropsFromObject(user, ["password", "userProfile"]),
-            userProfile: {
-                ...omitPropsFromObject(user.userProfile!, "avatarImagePath"),
-                avatarImageUrl
-            }
-        };
+        return userModelToDto(user);
     },
 
     getUsers: async (args: GetUsersDto): Promise<UserDto[]> => {
         const { options, name } = args;
         const { limit = 10, offset = 0 } = options ?? { undefined };
-        const users = (await userRepo.searchUsers(
+        const users = await userRepo.searchUsers(
             { name },
             {
                 take: limit,
@@ -128,45 +112,9 @@ export const userService: UserServiceInterface = {
                     userProfile: true
                 }
             }
-        )) as Prisma.UserGetPayload<{ include: { userProfile: true } }>[];
+        );
         return (
-            await Promise.allSettled(
-                users.map(async (user) => {
-                    let avatarImageUrl = null;
-
-                    try {
-                        if (user.userProfile!.avatarImagePath != null) {
-                            avatarImageUrl = await storageService.generateUrl(
-                                usersBucketConfigs.name,
-                                user.userProfile!.avatarImagePath!,
-                                envConfig.IMAGE_URL_EXP
-                            );
-                        }
-                        return {
-                            ...omitPropsFromObject(user, [
-                                "password",
-                                "userProfile"
-                            ]),
-                            userProfile: {
-                                ...omitPropsFromObject(
-                                    user.userProfile!,
-                                    "avatarImagePath"
-                                ),
-                                avatarImageUrl
-                            }
-                        };
-                    } catch (err) {
-                        if (err instanceof Error) {
-                            logger.warn(err.message);
-                        } else {
-                            logger.warn(
-                                "Caught unknown error when retrieving avatar image url"
-                            );
-                        }
-                        throw err;
-                    }
-                })
-            )
+            await Promise.allSettled(users.map((user) => userModelToDto(user)))
         )
             .filter((result) => result.status == "fulfilled")
             .map((result) => result.value);

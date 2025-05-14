@@ -1,4 +1,13 @@
 import { Song } from "@prisma/client";
+import { UserDto } from "./user.dto.js";
+
+export type SongDto = Omit<
+    Song,
+    "audioFilePath" | "coverImagePath" | "albumOrder"
+> & {
+    coverImageUrl: string | null;
+    user?: UserDto;
+};
 
 export type CreateSongDto = {
     name: string;

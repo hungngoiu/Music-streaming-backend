@@ -28,7 +28,7 @@ export const albumRouteDoc: OpenAPIV3.PathsObject = {
                     },
                     {
                         in: "query",
-                        name: "userProfiles",
+                        name: "userProfile",
                         description: "Optional fetching user profile",
                         schema: {
                             type: "boolean"
@@ -107,14 +107,6 @@ export const albumRouteDoc: OpenAPIV3.PathsObject = {
                     in: "query",
                     name: "userProfiles",
                     description: "Optional fetching user profile",
-                    schema: {
-                        type: "boolean"
-                    }
-                },
-                {
-                    in: "query",
-                    name: "songs",
-                    description: "Optional fetching songs",
                     schema: {
                         type: "boolean"
                     }
