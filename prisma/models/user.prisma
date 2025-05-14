@@ -14,7 +14,7 @@ model User {
     isVerified  Boolean      @default(false) @map("is_verified")
     userProfile UserProfile?
     songs       Song[]
-    Album       Album[]
+    albums      Album[]
 
     @@map("users")
 }
@@ -29,6 +29,6 @@ model UserProfile {
     avatarImagePath String?  @map("avatar_image_path")
     user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    @@map("user_profiles")
     @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
+    @@map("user_profiles")
 }

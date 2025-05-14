@@ -40,7 +40,7 @@ export const userController = {
             }
             const audioFile = files.audioFile[0];
             const coverImage = files.coverImage[0];
-            const { song, coverImageUrl } = await songService.createSong(
+            const song = await songService.createSong(
                 bodyData,
                 user.id,
                 audioFile,
@@ -50,14 +50,7 @@ export const userController = {
                 status: "success",
                 message: "Song uploaded successfully",
                 data: {
-                    song: {
-                        ...omitPropsFromObject(song, [
-                            "audioFilePath",
-                            "coverImagePath",
-                            "albumOrder"
-                        ]),
-                        coverImageUrl
-                    }
+                    song
                 }
             });
         } catch (err) {
@@ -77,7 +70,7 @@ export const userController = {
                     StatusCodes.BAD_REQUEST
                 );
             }
-            const { album, coverImageUrl } = await albumService.createAlbum(
+            const album = await albumService.createAlbum(
                 bodyData,
                 user.id,
                 file
@@ -86,10 +79,7 @@ export const userController = {
                 status: "success",
                 message: "Album created successfully",
                 data: {
-                    album: {
-                        ...omitPropsFromObject(album, ["coverImagePath"]),
-                        coverImageUrl
-                    }
+                    album
                 }
             });
         } catch (err) {
@@ -245,7 +235,8 @@ export const userController = {
             res.status(StatusCodes.OK).json({
                 status: "success",
                 message: "Get users successfully",
-                data: users
+                data: users,
+                count: users.length
             });
         } catch (err) {
             next(err);

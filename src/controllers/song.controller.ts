@@ -13,7 +13,7 @@ export const songController = {
             const songId = req.params.id;
             const queries = req.query as z.infer<typeof getSongQuerySchema>;
             const { userProfile } = queries;
-            const { song, coverImageUrl } = await songService.getSong({
+            const song = await songService.getSong({
                 id: songId,
                 options: {
                     userProfile
@@ -22,14 +22,7 @@ export const songController = {
             res.status(StatusCodes.OK).json({
                 status: "success",
                 data: {
-                    song: {
-                        ...omitPropsFromObject(song, [
-                            "audioFilePath",
-                            "coverImagePath",
-                            "albumOrder"
-                        ]),
-                        coverImageUrl
-                    }
+                    song
                 }
             });
         } catch (err) {
@@ -41,7 +34,7 @@ export const songController = {
         try {
             const queries = req.query as z.infer<typeof getSongsSchema>;
             const { limit, offset, userProfiles } = queries;
-            const songsWithImageUrl = await songService.getSongs({
+            const songs = await songService.getSongs({
                 ...omitPropsFromObject(queries, ["limit", "offset"]),
                 options: {
                     limit,
@@ -52,18 +45,8 @@ export const songController = {
             res.status(StatusCodes.OK).json({
                 status: "success",
                 message: "Get songs successfully",
-                data: songsWithImageUrl.map((songAndUrl) => {
-                    const { song, coverImageUrl } = songAndUrl;
-                    return {
-                        ...omitPropsFromObject(song, [
-                            "audioFilePath",
-                            "coverImagePath",
-                            "albumOrder"
-                        ]),
-                        coverImageUrl
-                    };
-                }),
-                count: songsWithImageUrl.length
+                data: songs,
+                count: songs.length
             });
         } catch (err) {
             next(err);

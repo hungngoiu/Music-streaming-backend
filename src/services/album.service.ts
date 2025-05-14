@@ -1,26 +1,24 @@
 import { AuthorizationError, CustomError } from "@/errors/index.js";
 import { albumRepo, songRepo } from "@/repositories/index.js";
 import {
+    AlbumDto,
     CreateAlbumDto,
     GetAlbumDto,
     GetAlbumsDto
 } from "@/types/dto/index.js";
-import { Album, Prisma, Song } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { StatusCodes } from "http-status-codes";
 import sharp from "sharp";
 import { storageService } from "./storage.service.js";
 import { musicsBucketConfigs } from "@/configs/storage.config.js";
-import { envConfig } from "@/configs/index.js";
-import logger from "@/utils/logger.js";
-import { omitPropsFromObject } from "@/utils/object.js";
 import { getDuplicates } from "@/utils/array.js";
-
+import { albumModelToDto } from "@/utils/modelToDto.js";
 interface AlbumServiceInterface {
     createAlbum: (
         data: CreateAlbumDto,
         userId: string,
         coverImg: Express.Multer.File
-    ) => Promise<{ album: Album; coverImageUrl: string | null }>;
+    ) => Promise<AlbumDto>;
     setSongs: (
         albumId: string,
         songIds: string[],
@@ -40,16 +38,9 @@ interface AlbumServiceInterface {
         userId: string
     ) => Promise<void>;
 
-    getAlbum: (args: GetAlbumDto) => Promise<{
-        album: Album & {
-            songsWithImageUrl?: { song: Song; coverImageUrl: string | null }[];
-        };
-        coverImageUrl: string | null;
-    }>;
+    getAlbum: (args: GetAlbumDto) => Promise<AlbumDto>;
 
-    getAlbums: (
-        args: GetAlbumsDto
-    ) => Promise<{ album: Album; coverImageUrl: string | null }[]>;
+    getAlbums: (args: GetAlbumsDto) => Promise<AlbumDto[]>;
 
     publicAlbum: (albumId: string, userId: string) => Promise<void>;
 }
@@ -59,7 +50,7 @@ export const albumService: AlbumServiceInterface = {
         data: CreateAlbumDto,
         userId: string,
         coverImg: Express.Multer.File
-    ): Promise<{ album: Album; coverImageUrl: string | null }> => {
+    ): Promise<AlbumDto> => {
         const user = albumRepo.getOneByFilter({ id: userId });
         if (!user) {
             throw new CustomError("User not found", StatusCodes.NOT_FOUND);
@@ -83,12 +74,7 @@ export const albumService: AlbumServiceInterface = {
                 coverImagePath: coverImagePath,
                 user: { connect: { id: userId } }
             });
-            const coverImageUrl = await storageService.generateUrl(
-                musicsBucketConfigs.name,
-                album.coverImagePath,
-                envConfig.IMAGE_URL_EXP
-            );
-            return { album, coverImageUrl };
+            return albumModelToDto(album);
         } catch (err) {
             await storageService.deleteOne(
                 musicsBucketConfigs.name,
@@ -270,7 +256,7 @@ export const albumService: AlbumServiceInterface = {
         await albumRepo.addSongs(album, unassignedSongIds);
     },
 
-    getAlbum: async (args: GetAlbumDto) => {
+    getAlbum: async (args: GetAlbumDto): Promise<AlbumDto> => {
         const { id, options, userId } = args;
         const album = await albumRepo.getOneByFilter(
             {
@@ -296,61 +282,24 @@ export const albumService: AlbumServiceInterface = {
                         ? {
                               orderBy: {
                                   albumOrder: "asc"
+                              },
+                              omit: {
+                                  albumOrder: true
                               }
                           }
                         : undefined
                 }
             }
         );
+
         if (!album) {
             throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
         }
-        let songsWithImageUrl = undefined;
-        if (album.songs) {
-            songsWithImageUrl = (
-                await Promise.allSettled(
-                    album.songs.map(async (song) => {
-                        try {
-                            const coverImageUrl =
-                                await storageService.generateUrl(
-                                    musicsBucketConfigs.name,
-                                    song.coverImagePath,
-                                    envConfig.IMAGE_URL_EXP
-                                );
-                            return { song, coverImageUrl };
-                        } catch (err) {
-                            if (err instanceof Error) {
-                                logger.warn(err.message);
-                            } else {
-                                logger.warn(
-                                    "Caught unknown error when retrieving song image url"
-                                );
-                            }
-                            throw err;
-                        }
-                    })
-                )
-            )
-                .filter((result) => result.status == "fulfilled")
-                .map((result) => result.value);
-        }
-        const coverImageUrl = await storageService.generateUrl(
-            musicsBucketConfigs.name,
-            album.coverImagePath,
-            envConfig.IMAGE_URL_EXP
-        );
-        return {
-            album: {
-                ...omitPropsFromObject(album, "songs"),
-                songsWithImageUrl: songsWithImageUrl
-            },
-            coverImageUrl
-        };
+
+        return albumModelToDto(album);
     },
 
-    getAlbums: async (
-        args: GetAlbumsDto
-    ): Promise<{ album: Album; coverImageUrl: string | null }[]> => {
+    getAlbums: async (args: GetAlbumsDto): Promise<AlbumDto[]> => {
         const { options, name, userId, loginUserId } = args;
         const { limit = 10, offset = 0 } = options ?? { undefined };
         const albums = await albumRepo.searchAlbums(
@@ -371,27 +320,10 @@ export const albumService: AlbumServiceInterface = {
             },
             loginUserId
         );
+
         return (
             await Promise.allSettled(
-                albums.map(async (album) => {
-                    try {
-                        const coverImageUrl = await storageService.generateUrl(
-                            musicsBucketConfigs.name,
-                            album.coverImagePath,
-                            envConfig.IMAGE_URL_EXP
-                        );
-                        return { album, coverImageUrl };
-                    } catch (err) {
-                        if (err instanceof Error) {
-                            logger.warn(err.message);
-                        } else {
-                            logger.warn(
-                                "Caught unknown error when retrieving song image url"
-                            );
-                        }
-                        throw err;
-                    }
-                })
+                albums.map((album) => albumModelToDto(album))
             )
         )
             .filter((result) => result.status == "fulfilled")

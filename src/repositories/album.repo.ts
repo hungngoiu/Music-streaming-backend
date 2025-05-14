@@ -2,13 +2,12 @@ import { Album, Prisma } from "@prisma/client";
 import prismaClient from "@/databases/prisma.js";
 import { searchAlbums, searchAlbumsWithUserId } from "@prisma/client/sql";
 import { omitPropsFromObject } from "@/utils/object.js";
-import { AlbumWithSongs } from "@/types/dto/index.js";
 
 export const albumRepo = {
     create: (
         data: Prisma.AlbumCreateInput,
         options?: Omit<Prisma.AlbumCreateArgs, "data">
-    ): Promise<Album> => {
+    ) => {
         return prismaClient.album.create({
             data,
             ...options
@@ -18,7 +17,7 @@ export const albumRepo = {
     getOneByFilter: (
         filter: Prisma.AlbumWhereInput,
         options?: Omit<Prisma.AlbumFindFirstArgs, "where">
-    ): Promise<AlbumWithSongs | null> => {
+    ) => {
         return prismaClient.album.findFirst({ where: filter, ...options });
     },
 
@@ -26,7 +25,7 @@ export const albumRepo = {
         filter: Prisma.AlbumWhereUniqueInput,
         data: Prisma.AlbumUpdateInput,
         options?: Omit<Prisma.AlbumUpdateArgs, "data" | "where">
-    ): Promise<Album> => {
+    ) => {
         return prismaClient.album.update({
             where: filter,
             data,
