@@ -306,5 +306,25 @@ export const authRouteDoc: OpenAPIV3.PathsObject = {
             },
             tags: ["auth"]
         }
+    },
+    [`${authRouteConfig.index}${authRouteConfig.signOut}`]: {
+        post: {
+            summary:
+                "Sign out, must include a refresh token in cookies, can include a access token to be revoked",
+            security: [
+                {
+                    refreshTokenCookieAuth: []
+                },
+                {
+                    bearerAuth: []
+                }
+            ],
+            responses: {
+                "200": {
+                    description: "Sign out successfully"
+                }
+            },
+            tags: ["auth"]
+        }
     }
 };
