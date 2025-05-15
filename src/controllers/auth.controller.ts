@@ -52,11 +52,8 @@ export const authController = {
                     birth
                 }
             };
-            const {
-                user,
-                accessToken,
-                refreshToken
-            } = await authService.signUp(signUpdata);
+            const { user, accessToken, refreshToken } =
+                await authService.signUp(signUpdata);
             res.status(StatusCodes.CREATED)
                 .cookie("refreshToken", refreshToken, {
                     httpOnly: true,

@@ -1,5 +1,9 @@
 import { CustomError } from "@/errors/CustomError.js";
-import { getSongQuerySchema, getSongsSchema } from "@/schemas/index.js";
+import {
+    getSongQuerySchema,
+    getSongsSchema,
+    uploadSongSchema
+} from "@/schemas/index.js";
 import { songService } from "@/services/index.js";
 import { omitPropsFromObject } from "@/utils/object.js";
 import axios from "axios";
@@ -8,6 +12,45 @@ import { StatusCodes } from "http-status-codes";
 import { z } from "zod";
 
 export const songController = {
+    uploadSong: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const bodyData = req.body as z.infer<typeof uploadSongSchema>;
+            const user = req.user!;
+            const files = req.files as {
+                [fieldname: string]: Express.Multer.File[];
+            };
+            if (!files.audioFile) {
+                throw new CustomError(
+                    "Must upload a song",
+                    StatusCodes.BAD_REQUEST
+                );
+            }
+            if (!files.coverImage) {
+                throw new CustomError(
+                    "Must upload a cover image",
+                    StatusCodes.BAD_REQUEST
+                );
+            }
+            const audioFile = files.audioFile[0];
+            const coverImage = files.coverImage[0];
+            const song = await songService.createSong(
+                bodyData,
+                user.id,
+                audioFile,
+                coverImage
+            );
+            res.status(StatusCodes.CREATED).json({
+                status: "success",
+                message: "Song uploaded successfully",
+                data: {
+                    song
+                }
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
     getSong: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const songId = req.params.id;
