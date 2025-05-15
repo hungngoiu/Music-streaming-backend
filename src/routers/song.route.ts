@@ -4,6 +4,7 @@ import {
     isVerifiedUserMiddleware,
     verifyTokenMiddleware
 } from "@/middlewares/auth.middleware.js";
+import { fieldsFileUpload } from "@/middlewares/index.js";
 import { getSongQuerySchema, getSongsSchema } from "@/schemas/song.schema.js";
 import { dataValidation } from "@/validations/data.validations.js";
 import { Router } from "express";
@@ -18,6 +19,28 @@ router.get(songRouteConfig.status, (req: Request, res: Response) => {
         status: "OK"
     });
 });
+
+router.post(
+    songRouteConfig.uploadSong,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    fieldsFileUpload({
+        fields: [
+            {
+                name: "audioFile",
+                maxCount: 1,
+                allowedExtensions: [".mp3", ".wav"]
+            },
+            {
+                name: "coverImage",
+                maxCount: 1,
+                allowedExtensions: [".jpg", ".jpeg", ".png"]
+            }
+        ]
+    }),
+    isVerifiedUserMiddleware,
+    songController.uploadSong
+);
 
 router.get(
     songRouteConfig.getSongs,
