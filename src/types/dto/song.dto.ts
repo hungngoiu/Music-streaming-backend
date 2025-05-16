@@ -14,7 +14,7 @@ export type CreateSongDto = {
     lyric?: string;
 };
 
-export type GetSongDto = Partial<Pick<Song, "id">> & {
+export type GetSongDto = Pick<Song, "id"> & {
     options?: {
         userProfile?: boolean;
     };

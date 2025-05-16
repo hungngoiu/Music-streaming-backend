@@ -6,8 +6,11 @@ import {
     verifyTokenMiddleware
 } from "@/middlewares/index.js";
 import {
+    addSongSchema,
+    addSongsSchema,
     getAlbumQuerySchema,
-    getAlbumsQuerySchema
+    getAlbumsQuerySchema,
+    setSongsSchema
 } from "@/schemas/album.schema.js";
 import { dataValidation } from "@/validations/data.validations.js";
 import { Router, Request, Response } from "express";
@@ -37,6 +40,7 @@ router.patch(
     albumRouteConfig.addSong,
     verifyTokenMiddleware({ type: "at" }),
     isVerifiedUserMiddleware,
+    dataValidation(addSongSchema, "body"),
     albumController.addSong
 );
 
@@ -44,6 +48,7 @@ router.patch(
     albumRouteConfig.addSongs,
     verifyTokenMiddleware({ type: "at" }),
     isVerifiedUserMiddleware,
+    dataValidation(addSongsSchema, "body"),
     albumController.addSongs
 );
 
@@ -51,6 +56,7 @@ router.put(
     albumRouteConfig.setSongs,
     verifyTokenMiddleware({ type: "at" }),
     isVerifiedUserMiddleware,
+    dataValidation(setSongsSchema, "body"),
     albumController.setSongs
 );
 

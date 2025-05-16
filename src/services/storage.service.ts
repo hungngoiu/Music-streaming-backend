@@ -168,7 +168,7 @@ export const storageService: StorageServiceInterface = {
             .from(bucket)
             .createSignedUrl(filePath, duration);
         if (error) {
-            logger.error(error.message);
+            logger.warn(error.message + "\nfilePath: " + filePath);
         }
         return data ? data.signedUrl : null;
     }

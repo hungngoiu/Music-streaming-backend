@@ -12,6 +12,10 @@ import { songRepo, userRepo } from "@/repositories/index.js";
 import sharp from "sharp";
 import { envConfig } from "@/configs/env.config.js";
 import { songModelToDto } from "@/utils/modelToDto.js";
+import stableStringify from "json-stable-stringify";
+import { cacheOrFetch } from "@/utils/caching.js";
+import { namespaces } from "@/configs/redis.config.js";
+import { redisService } from "./index.js";
 interface SongServiceInterface {
     createSong: (
         data: CreateSongDto,
@@ -86,24 +90,40 @@ export const songService: SongServiceInterface = {
 
     getSong: async (args: GetSongDto): Promise<SongDto> => {
         const { id, options } = args;
-        const song = await songRepo.getOneByFilter(
-            { id },
-            {
-                omit: {
-                    albumOrder: true
-                },
-                include: {
-                    user: {
+        const cacheKey = `${id}:${stableStringify(options)}`;
+        const { data: song, cacheHit } = await cacheOrFetch(
+            namespaces.Song,
+            cacheKey,
+            () =>
+                songRepo.getOneByFilter(
+                    { id },
+                    {
                         omit: {
-                            password: true
+                            albumOrder: true
                         },
                         include: {
-                            ...options
+                            user: {
+                                omit: {
+                                    password: true
+                                },
+                                include: {
+                                    ...options
+                                }
+                            }
                         }
                     }
-                }
-            }
+                )
         );
+        if (!cacheHit) {
+            await redisService.setAdd(
+                {
+                    namespace: namespaces.Song,
+                    key: id,
+                    members: [stableStringify(options)!]
+                },
+                { EX: envConfig.REDIS_CACHING_EXP }
+            );
+        }
         if (!song) {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }
@@ -147,10 +167,16 @@ export const songService: SongServiceInterface = {
         if (!song) {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }
-        const audioUrl = await storageService.generateUrl(
-            musicsBucketConfigs.name,
-            song.audioFilePath,
-            envConfig.MUCSIC_URL_EXP
+        const cacheKey = `${musicsBucketConfigs.name}:${musicsBucketConfigs.audioFolder}:${song.audioFilePath}`;
+        const { data: audioUrl } = await cacheOrFetch(
+            namespaces.Filepath,
+            cacheKey,
+            () =>
+                storageService.generateUrl(
+                    musicsBucketConfigs.name,
+                    song.audioFilePath,
+                    envConfig.MUCSIC_URL_EXP
+                )
         );
         return audioUrl;
     }

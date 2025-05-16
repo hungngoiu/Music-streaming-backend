@@ -5,7 +5,7 @@ import eslintConfigPrettier from "eslint-config-prettier";
 import unusedImports from "eslint-plugin-unused-imports";
 
 export default [
-    { ignores: ["node_modules"] },
+    { ignores: ["node_modules", "dist"] },
     { files: ["**/*.{js,mjs,cjs,ts}"] },
     { languageOptions: { globals: globals.node } },
     {

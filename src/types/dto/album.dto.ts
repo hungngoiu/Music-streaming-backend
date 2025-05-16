@@ -13,7 +13,7 @@ export type CreateAlbumDto = {
     name: string;
 };
 
-export type GetAlbumDto = Partial<Pick<Album, "id">> & {
+export type GetAlbumDto = Pick<Album, "id"> & {
     options?: {
         userProfile?: boolean;
         songs?: boolean;

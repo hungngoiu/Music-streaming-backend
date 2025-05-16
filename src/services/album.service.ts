@@ -13,6 +13,11 @@ import { storageService } from "./storage.service.js";
 import { musicsBucketConfigs } from "@/configs/storage.config.js";
 import { getDuplicates } from "@/utils/array.js";
 import { albumModelToDto } from "@/utils/modelToDto.js";
+import stableStringify from "json-stable-stringify";
+import { cacheOrFetch } from "@/utils/caching.js";
+import { namespaces } from "@/configs/redis.config.js";
+import { redisService } from "./redis.service.js";
+import { envConfig } from "@/configs/index.js";
 interface AlbumServiceInterface {
     createAlbum: (
         data: CreateAlbumDto,
@@ -23,20 +28,20 @@ interface AlbumServiceInterface {
         albumId: string,
         songIds: string[],
         userId: string
-    ) => Promise<void>;
+    ) => Promise<AlbumDto>;
 
     addSong: (
         albumId: string,
         songId: string,
         userId: string,
         index?: number
-    ) => Promise<void>;
+    ) => Promise<AlbumDto>;
 
     addSongs: (
         albumId: string,
         songIds: string[],
         userId: string
-    ) => Promise<void>;
+    ) => Promise<AlbumDto>;
 
     getAlbum: (args: GetAlbumDto) => Promise<AlbumDto>;
 
@@ -88,7 +93,7 @@ export const albumService: AlbumServiceInterface = {
         albumId: string,
         songIds: string[],
         userId: string
-    ): Promise<void> => {
+    ): Promise<AlbumDto> => {
         const album = await albumRepo.getOneByFilter({ id: albumId });
         if (!album) {
             throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
@@ -146,7 +151,24 @@ export const albumService: AlbumServiceInterface = {
                 StatusCodes.BAD_REQUEST
             );
         }
-        await albumRepo.connectSongs(albumId, songIds);
+
+        const updatedAlbum = await albumRepo.connectSongs(albumId, songIds);
+
+        const cacheKeys = await redisService.getSetMembers({
+            namespace: namespaces.Album,
+            key: album.id
+        });
+        const affectedKeys = cacheKeys.filter((key) => {
+            return key.includes(`"songs":true`);
+        });
+        if (affectedKeys.length != 0) {
+            await redisService.delete({
+                namespace: namespaces.Album,
+                keys: [...affectedKeys.map((key) => `${albumId}:${key}`)]
+            });
+        }
+
+        return albumModelToDto(updatedAlbum);
     },
 
     addSong: async (
@@ -154,7 +176,7 @@ export const albumService: AlbumServiceInterface = {
         songId: string,
         userId: string,
         index?: number
-    ): Promise<void> => {
+    ): Promise<AlbumDto> => {
         const album = (await albumRepo.getOneByFilter(
             { id: albumId },
             {
@@ -185,7 +207,23 @@ export const albumService: AlbumServiceInterface = {
                 StatusCodes.CONFLICT
             );
         }
-        await albumRepo.addSong(album, songId, index);
+
+        const result = await albumRepo.addSong(album, songId, index);
+
+        const cacheKeys = await redisService.getSetMembers({
+            namespace: namespaces.Album,
+            key: album.id
+        });
+        const affectedKeys = cacheKeys.filter((key) => {
+            return key.includes(`"songs":true`);
+        });
+        if (affectedKeys.length != 0) {
+            await redisService.delete({
+                namespace: namespaces.Album,
+                keys: [...affectedKeys.map((key) => `${albumId}:${key}`)]
+            });
+        }
+        return albumModelToDto(result);
     },
 
     addSongs: async (albumId: string, songIds: string[], userId: string) => {
@@ -253,49 +291,81 @@ export const albumService: AlbumServiceInterface = {
         const unassignedSongIds = songs
             .filter((song) => !song.albumId)
             .map((song) => song.id);
-        await albumRepo.addSongs(album, unassignedSongIds);
+
+        const result = await albumRepo.addSongs(album, unassignedSongIds);
+
+        const cacheKeys = await redisService.getSetMembers({
+            namespace: namespaces.Album,
+            key: album.id
+        });
+        const affectedKeys = cacheKeys.filter((key) => {
+            return key.includes(`"songs":true`);
+        });
+        if (affectedKeys.length != 0) {
+            await redisService.delete({
+                namespace: namespaces.Album,
+                keys: [...affectedKeys.map((key) => `${albumId}:${key}`)]
+            });
+        }
+        return albumModelToDto(result);
     },
 
     getAlbum: async (args: GetAlbumDto): Promise<AlbumDto> => {
         const { id, options, userId } = args;
-        const album = await albumRepo.getOneByFilter(
-            {
-                id,
-                OR: [
+        const cacheKey = `${id}:${stableStringify(options)}`;
+        const { data: album, cacheHit } = await cacheOrFetch(
+            namespaces.Album,
+            cacheKey,
+            () =>
+                albumRepo.getOneByFilter(
                     {
-                        userId
+                        id,
+                        OR: [
+                            {
+                                userId
+                            },
+                            { isPublic: true }
+                        ]
                     },
-                    { isPublic: true }
-                ]
-            },
-            {
-                include: {
-                    user: {
-                        omit: {
-                            password: true
-                        },
+                    {
                         include: {
-                            userProfile: options?.userProfile
+                            user: {
+                                omit: {
+                                    password: true
+                                },
+                                include: {
+                                    userProfile: options?.userProfile
+                                }
+                            },
+                            songs: options?.songs
+                                ? {
+                                      orderBy: {
+                                          albumOrder: "asc"
+                                      },
+                                      omit: {
+                                          albumOrder: true
+                                      }
+                                  }
+                                : undefined
                         }
-                    },
-                    songs: options?.songs
-                        ? {
-                              orderBy: {
-                                  albumOrder: "asc"
-                              },
-                              omit: {
-                                  albumOrder: true
-                              }
-                          }
-                        : undefined
-                }
-            }
+                    }
+                )
         );
+
+        if (!cacheHit) {
+            await redisService.setAdd(
+                {
+                    namespace: namespaces.Album,
+                    key: id,
+                    members: [stableStringify(options)!]
+                },
+                { EX: envConfig.REDIS_CACHING_EXP }
+            );
+        }
 
         if (!album) {
             throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
         }
-
         return albumModelToDto(album);
     },
 
@@ -329,6 +399,7 @@ export const albumService: AlbumServiceInterface = {
             .filter((result) => result.status == "fulfilled")
             .map((result) => result.value);
     },
+
     publicAlbum: async (albumId: string, userId: string): Promise<void> => {
         const album = await albumRepo.getOneByFilter({ id: albumId });
         if (!album) {

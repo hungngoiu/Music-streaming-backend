@@ -5,15 +5,19 @@ import sharp from "sharp";
 import { storageService } from "./storage.service.js";
 import { usersBucketConfigs } from "@/configs/storage.config.js";
 import { GetUsersDto, UpdateProfileDto, UserDto } from "@/types/dto/index.js";
-import { Prisma, User } from "@prisma/client";
 import { userModelToDto } from "@/utils/modelToDto.js";
+import { cacheOrFetch } from "@/utils/caching.js";
+import { namespaces } from "@/configs/redis.config.js";
+import { redisService } from "./redis.service.js";
+import { envConfig } from "@/configs/index.js";
+import stableStringify from "json-stable-stringify";
 
 interface UserServiceInterface {
     updateAvatar: (
         userId: string,
         avatar: Express.Multer.File
     ) => Promise<void>;
-    updateProfile: (userId: string, data: UpdateProfileDto) => Promise<User>;
+    updateProfile: (userId: string, data: UpdateProfileDto) => Promise<UserDto>;
     getUser: (userId: string) => Promise<UserDto>;
     getUsers: (args: GetUsersDto) => Promise<UserDto[]>;
 }
@@ -60,7 +64,21 @@ export const userService: UserServiceInterface = {
                 oldAvatarImagePath
             );
         }
+        const cacheKeys = await redisService.getSetMembers({
+            namespace: namespaces.User,
+            key: userId
+        });
+        const affectedKeys = cacheKeys.filter((key) => {
+            return key.includes(`"userProfile":true`);
+        });
+        if (cacheKeys.length != 0) {
+            await redisService.delete({
+                namespace: namespaces.User,
+                keys: [...affectedKeys.map((key) => `${userId}:${key}`), userId]
+            });
+        }
     },
+
     updateProfile: async (userId: string, data: UpdateProfileDto) => {
         const userProfile = await userRepo.getOneProfileByfilter({
             userId: userId
@@ -68,7 +86,7 @@ export const userService: UserServiceInterface = {
         if (!userProfile) {
             throw new CustomError("User not found", StatusCodes.NOT_FOUND);
         }
-        return await userRepo.update(
+        const user = await userRepo.update(
             { id: userId },
             {
                 userProfile: {
@@ -77,23 +95,44 @@ export const userService: UserServiceInterface = {
             },
             {
                 include: {
-                    userProfile: {
-                        omit: {
-                            avatarImagePath: true
-                        }
-                    }
+                    userProfile: true
                 }
             }
         );
+        const cacheKeys = await redisService.getSetMembers({
+            namespace: namespaces.User,
+            key: userId
+        });
+        const affectedKeys = cacheKeys.filter((key) => {
+            return key.includes(`"userProfile":true`);
+        });
+        if (cacheKeys.length != 0) {
+            await redisService.delete({
+                namespace: namespaces.User,
+                keys: [...affectedKeys.map((key) => `${userId}:${key}`), userId]
+            });
+        }
+        return userModelToDto(user);
     },
 
     getUser: async (userId: string) => {
-        const user = (await userRepo.getOneByFilter(
-            { id: userId },
-            { include: { userProfile: true } }
-        )) as Prisma.UserGetPayload<{
-            include: { userProfile: true };
-        }>;
+        const options = { include: { userProfile: true } };
+        const cacheKey = `${userId}:${stableStringify(options)}`;
+        const { data: user, cacheHit } = await cacheOrFetch(
+            namespaces.User,
+            cacheKey,
+            () => userRepo.getOneByFilter({ id: userId }, options)
+        );
+        if (!cacheHit) {
+            await redisService.setAdd(
+                {
+                    namespace: namespaces.User,
+                    key: userId,
+                    members: [stableStringify(options)!]
+                },
+                { EX: envConfig.REDIS_CACHING_EXP }
+            );
+        }
         if (!user) {
             throw new CustomError("User not found", StatusCodes.NOT_FOUND);
         }

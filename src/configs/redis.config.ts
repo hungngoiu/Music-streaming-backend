@@ -12,5 +12,9 @@ export const redisConfig: RedisClientOptions = {
 export enum namespaces {
     Verification = "verification",
     JWT_Token_Blacklist = "blacklist",
-    JWT_Refresh_Token = "refresh_token"
+    JWT_Refresh_Token = "refresh_token",
+    User = "user",
+    Album = "album",
+    Song = "song",
+    Filepath = "path"
 }
