@@ -15,7 +15,7 @@ export const cacheOrFetch = async <T>(
 
     const data = await fetchFn();
     if (data) {
-        await redisService.set(
+        redisService.set(
             { namespace, key, value: stableStringify(data)! },
             { EX: envConfig.REDIS_CACHING_EXP }
         );

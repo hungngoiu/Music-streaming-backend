@@ -64,19 +64,24 @@ export const userService: UserServiceInterface = {
                 oldAvatarImagePath
             );
         }
-        const cacheKeys = await redisService.getSetMembers({
-            namespace: namespaces.User,
-            key: userId
-        });
-        const affectedKeys = cacheKeys.filter((key) => {
-            return key.includes(`"userProfile":true`);
-        });
-        if (cacheKeys.length != 0) {
-            await redisService.delete({
+
+        // Delete affected cache
+        redisService
+            .getSetMembers({
                 namespace: namespaces.User,
-                keys: [...affectedKeys.map((key) => `${userId}:${key}`), userId]
+                key: userId
+            })
+            .then((cacheKeys) =>
+                cacheKeys.filter((key) => key.includes(`"userProfile":true`))
+            )
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.User,
+                        keys: [...affectedKeys.map((key) => `${userId}:${key}`)]
+                    });
+                }
             });
-        }
     },
 
     updateProfile: async (userId: string, data: UpdateProfileDto) => {
@@ -99,19 +104,24 @@ export const userService: UserServiceInterface = {
                 }
             }
         );
-        const cacheKeys = await redisService.getSetMembers({
-            namespace: namespaces.User,
-            key: userId
-        });
-        const affectedKeys = cacheKeys.filter((key) => {
-            return key.includes(`"userProfile":true`);
-        });
-        if (cacheKeys.length != 0) {
-            await redisService.delete({
+
+        // Delete affected cache
+        redisService
+            .getSetMembers({
                 namespace: namespaces.User,
-                keys: [...affectedKeys.map((key) => `${userId}:${key}`), userId]
+                key: userId
+            })
+            .then((cacheKeys) =>
+                cacheKeys.filter((key) => key.includes(`"userProfile":true`))
+            )
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.User,
+                        keys: [...affectedKeys.map((key) => `${userId}:${key}`)]
+                    });
+                }
             });
-        }
         return userModelToDto(user);
     },
 
@@ -124,7 +134,7 @@ export const userService: UserServiceInterface = {
             () => userRepo.getOneByFilter({ id: userId }, options)
         );
         if (!cacheHit) {
-            await redisService.setAdd(
+            redisService.setAdd(
                 {
                     namespace: namespaces.User,
                     key: userId,

@@ -154,19 +154,25 @@ export const albumService: AlbumServiceInterface = {
 
         const updatedAlbum = await albumRepo.connectSongs(albumId, songIds);
 
-        const cacheKeys = await redisService.getSetMembers({
-            namespace: namespaces.Album,
-            key: album.id
-        });
-        const affectedKeys = cacheKeys.filter((key) => {
-            return key.includes(`"songs":true`);
-        });
-        if (affectedKeys.length != 0) {
-            await redisService.delete({
+        // Delete affected cache
+        redisService
+            .getSetMembers({
                 namespace: namespaces.Album,
-                keys: [...affectedKeys.map((key) => `${albumId}:${key}`)]
+                key: album.id
+            })
+            .then((cacheKeys) =>
+                cacheKeys.filter((key) => key.includes(`"songs":true`))
+            )
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.Album,
+                        keys: [
+                            ...affectedKeys.map((key) => `${albumId}:${key}`)
+                        ]
+                    });
+                }
             });
-        }
 
         return albumModelToDto(updatedAlbum);
     },
@@ -210,19 +216,26 @@ export const albumService: AlbumServiceInterface = {
 
         const result = await albumRepo.addSong(album, songId, index);
 
-        const cacheKeys = await redisService.getSetMembers({
-            namespace: namespaces.Album,
-            key: album.id
-        });
-        const affectedKeys = cacheKeys.filter((key) => {
-            return key.includes(`"songs":true`);
-        });
-        if (affectedKeys.length != 0) {
-            await redisService.delete({
+        // Delete affected cache
+        redisService
+            .getSetMembers({
                 namespace: namespaces.Album,
-                keys: [...affectedKeys.map((key) => `${albumId}:${key}`)]
+                key: album.id
+            })
+            .then((cacheKeys) =>
+                cacheKeys.filter((key) => key.includes(`"songs":true`))
+            )
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.Album,
+                        keys: [
+                            ...affectedKeys.map((key) => `${albumId}:${key}`)
+                        ]
+                    });
+                }
             });
-        }
+
         return albumModelToDto(result);
     },
 
@@ -294,19 +307,26 @@ export const albumService: AlbumServiceInterface = {
 
         const result = await albumRepo.addSongs(album, unassignedSongIds);
 
-        const cacheKeys = await redisService.getSetMembers({
-            namespace: namespaces.Album,
-            key: album.id
-        });
-        const affectedKeys = cacheKeys.filter((key) => {
-            return key.includes(`"songs":true`);
-        });
-        if (affectedKeys.length != 0) {
-            await redisService.delete({
+        // Delete affected cache
+        redisService
+            .getSetMembers({
                 namespace: namespaces.Album,
-                keys: [...affectedKeys.map((key) => `${albumId}:${key}`)]
+                key: album.id
+            })
+            .then((cacheKeys) =>
+                cacheKeys.filter((key) => key.includes(`"songs":true`))
+            )
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.Album,
+                        keys: [
+                            ...affectedKeys.map((key) => `${albumId}:${key}`)
+                        ]
+                    });
+                }
             });
-        }
+
         return albumModelToDto(result);
     },
 
@@ -353,7 +373,7 @@ export const albumService: AlbumServiceInterface = {
         );
 
         if (!cacheHit) {
-            await redisService.setAdd(
+            redisService.setAdd(
                 {
                     namespace: namespaces.Album,
                     key: id,

@@ -46,7 +46,7 @@ export const userController = {
                 status: "success",
                 message: "Update profile successfully",
                 data: {
-                    user: omitPropsFromObject(updatedUser, "password")
+                    user: updatedUser
                 }
             });
         } catch (err) {

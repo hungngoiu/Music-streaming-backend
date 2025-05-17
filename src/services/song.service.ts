@@ -115,7 +115,7 @@ export const songService: SongServiceInterface = {
                 )
         );
         if (!cacheHit) {
-            await redisService.setAdd(
+            redisService.setAdd(
                 {
                     namespace: namespaces.Song,
                     key: id,
