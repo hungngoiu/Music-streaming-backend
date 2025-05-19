@@ -15,15 +15,15 @@ export type CreateSongDto = {
 };
 
 export type GetSongDto = Pick<Song, "id"> & {
-    options?: {
-        userProfile?: boolean;
+    options: {
+        userProfile: boolean;
     };
 };
 
 export type GetSongsDto = Partial<Pick<Song, "name" | "userId">> & {
-    options?: {
-        limit?: number;
-        offset?: number;
-        userProfiles?: boolean;
+    options: {
+        limit: number;
+        offset: number;
+        userProfiles: boolean;
     };
 };

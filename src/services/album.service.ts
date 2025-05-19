@@ -207,11 +207,20 @@ export const albumService: AlbumServiceInterface = {
         if (song.userId != userId) {
             throw new AuthorizationError("Song not belong to user");
         }
-        if (album.songs.map((song) => song.id).includes(songId)) {
-            throw new CustomError(
-                "The song is already existed in the album",
-                StatusCodes.CONFLICT
-            );
+        if (song.albumId) {
+            if (song.albumId == albumId) {
+                throw new CustomError(
+                    "The song is already existed in the album",
+                    StatusCodes.CONFLICT
+                );
+            }
+            else {
+                throw new CustomError(
+                    "The song is assigned to another album",
+                    StatusCodes.CONFLICT
+                );
+            }
+
         }
 
         const result = await albumRepo.addSong(album, songId, index);
@@ -301,6 +310,7 @@ export const albumService: AlbumServiceInterface = {
                 StatusCodes.BAD_REQUEST
             );
         }
+        // songs that already in the album are ignored
         const unassignedSongIds = songs
             .filter((song) => !song.albumId)
             .map((song) => song.id);
@@ -340,12 +350,6 @@ export const albumService: AlbumServiceInterface = {
                 albumRepo.getOneByFilter(
                     {
                         id,
-                        OR: [
-                            {
-                                userId
-                            },
-                            { isPublic: true }
-                        ]
                     },
                     {
                         include: {
@@ -354,19 +358,19 @@ export const albumService: AlbumServiceInterface = {
                                     password: true
                                 },
                                 include: {
-                                    userProfile: options?.userProfile
+                                    userProfile: options.userProfile
                                 }
                             },
-                            songs: options?.songs
+                            songs: options.songs
                                 ? {
-                                      orderBy: {
-                                          albumOrder: "asc"
-                                      },
-                                      omit: {
-                                          albumOrder: true
-                                      }
-                                  }
-                                : undefined
+                                    orderBy: {
+                                        albumOrder: "asc"
+                                    },
+                                    omit: {
+                                        albumOrder: true
+                                    }
+                                }
+                                : false
                         }
                     }
                 )
@@ -386,12 +390,15 @@ export const albumService: AlbumServiceInterface = {
         if (!album) {
             throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
         }
+        if (!album.isPublic && album.userId != userId) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
+        }
         return albumModelToDto(album);
     },
 
     getAlbums: async (args: GetAlbumsDto): Promise<AlbumDto[]> => {
         const { options, name, userId, loginUserId } = args;
-        const { limit = 10, offset = 0 } = options ?? { undefined };
+        const { limit, offset } = options;
         const albums = await albumRepo.searchAlbums(
             { name, userId },
             {
@@ -403,7 +410,7 @@ export const albumService: AlbumServiceInterface = {
                             password: true
                         },
                         include: {
-                            userProfile: options?.userProfiles
+                            userProfile: options.userProfiles
                         }
                     }
                 }
@@ -421,7 +428,11 @@ export const albumService: AlbumServiceInterface = {
     },
 
     publicAlbum: async (albumId: string, userId: string): Promise<void> => {
-        const album = await albumRepo.getOneByFilter({ id: albumId });
+        const cacheKey = `${albumId}:${stableStringify({})}`;
+        const { data: album } = await cacheOrFetch(namespaces.Album, cacheKey, () => albumRepo.getOneByFilter({ id: albumId }));
+        if (!album) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
+        }
         if (!album) {
             throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
         }

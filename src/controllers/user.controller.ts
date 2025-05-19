@@ -73,7 +73,7 @@ export const userController = {
     getUsers: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const queries = req.query as z.infer<typeof getUsersQuerySchema>;
-            const { limit, offset } = queries;
+            const { limit = 10, offset = 0 } = queries;
             const users = await userService.getUsers({
                 ...omitPropsFromObject(queries, ["limit", "offset"]),
                 options: {

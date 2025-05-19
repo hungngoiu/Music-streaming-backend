@@ -8,7 +8,7 @@ export const userRepo = {
     getOneByFilter: (
         filter: Prisma.UserWhereInput,
         options?: Omit<Prisma.UserFindFirstArgs, "where">
-    ): Promise<User | null> => {
+    ) => {
         return prismaClient.user.findFirst({
             where: filter,
             ...options
@@ -17,7 +17,7 @@ export const userRepo = {
     getAllByFilter: (
         filter: Prisma.UserWhereInput,
         options?: Omit<Prisma.UserFindManyArgs, "where">
-    ): Promise<User[]> => {
+     ) => {
         return prismaClient.user.findMany({
             where: filter,
             ...options

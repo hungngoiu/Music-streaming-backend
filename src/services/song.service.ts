@@ -133,7 +133,7 @@ export const songService: SongServiceInterface = {
 
     getSongs: async (args: GetSongsDto): Promise<SongDto[]> => {
         const { options, name, userId } = args;
-        const { limit = 10, offset = 0 } = options ?? { undefined };
+        const { limit, offset } = options;
         const songs = await songRepo.searchSongs(
             { name, userId },
             {

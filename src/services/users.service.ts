@@ -30,7 +30,6 @@ export const userService: UserServiceInterface = {
         if (!userProfile) {
             throw new CustomError("User not found", StatusCodes.NOT_FOUND);
         }
-
         //Format the image before uploading
         const avatarBuffer = await sharp(avatar.buffer)
             .resize(512, 512, {
@@ -48,7 +47,7 @@ export const userService: UserServiceInterface = {
 
         try {
             await userRepo.updateProfile(
-                { id: userProfile.id },
+                { id: userProfile!.id },
                 { avatarImagePath }
             );
         } catch (err) {
@@ -91,7 +90,7 @@ export const userService: UserServiceInterface = {
         if (!userProfile) {
             throw new CustomError("User not found", StatusCodes.NOT_FOUND);
         }
-        const user = await userRepo.update(
+        const updatedUser = await userRepo.update(
             { id: userId },
             {
                 userProfile: {
@@ -122,16 +121,16 @@ export const userService: UserServiceInterface = {
                     });
                 }
             });
-        return userModelToDto(user);
+        return userModelToDto(updatedUser);
     },
 
     getUser: async (userId: string) => {
-        const options = { include: { userProfile: true } };
+        const options = { userProfile: true };
         const cacheKey = `${userId}:${stableStringify(options)}`;
         const { data: user, cacheHit } = await cacheOrFetch(
             namespaces.User,
             cacheKey,
-            () => userRepo.getOneByFilter({ id: userId }, options)
+            () => userRepo.getOneByFilter({ id: userId }, {include: options})
         );
         if (!cacheHit) {
             redisService.setAdd(
@@ -151,7 +150,7 @@ export const userService: UserServiceInterface = {
 
     getUsers: async (args: GetUsersDto): Promise<UserDto[]> => {
         const { options, name } = args;
-        const { limit = 10, offset = 0 } = options ?? { undefined };
+        const { limit, offset} = options;
         const users = await userRepo.searchUsers(
             { name },
             {

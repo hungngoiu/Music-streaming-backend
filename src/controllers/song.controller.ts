@@ -55,7 +55,7 @@ export const songController = {
         try {
             const songId = req.params.id;
             const queries = req.query as z.infer<typeof getSongQuerySchema>;
-            const { userProfile } = queries;
+            const { userProfile = false } = queries;
             const song = await songService.getSong({
                 id: songId,
                 options: {
@@ -76,7 +76,7 @@ export const songController = {
     getSongs: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const queries = req.query as z.infer<typeof getSongsSchema>;
-            const { limit, offset, userProfiles } = queries;
+            const { limit = 10, offset = 0, userProfiles = false} = queries;
             const songs = await songService.getSongs({
                 ...omitPropsFromObject(queries, ["limit", "offset"]),
                 options: {
