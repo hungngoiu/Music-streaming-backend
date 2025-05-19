@@ -9,12 +9,24 @@ import { apiConfig } from "./configs/routes/index.js";
 import cookieParser from "cookie-parser";
 import swaggerUi from "swagger-ui-express";
 import swaggerDocument, { swaggerOptions } from "@/configs/swagger/index.js";
-
+import cors from "cors";
 const app: Express = express();
 
 const startServer = async () => {
     await connectDbs();
 
+    app.use(
+        cors({
+            origin: (origin, callback) => {
+                if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
+                    callback(null, true);
+                } else {
+                    callback(new Error("Not allowed by CORS"));
+                }
+            },
+            credentials: true // if you use cookies or auth headers
+        })
+    );
     app.use(express.json());
     app.use(cookieParser());
     app.use(

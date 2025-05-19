@@ -2,7 +2,7 @@ import { passwordRegex, phoneRegex, usernameRegex } from "@/utils/regex.js";
 import { z } from "zod";
 import { Gender } from "@prisma/client";
 
-const userProfileSchema = z.object({
+export const userProfileSchema = z.object({
     name: z.string().min(1, "Missing name"),
     birth: z.coerce
         .string()

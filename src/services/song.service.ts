@@ -2,30 +2,30 @@ import { CustomError } from "@/errors/index.js";
 import {
     CreateSongDto,
     GetSongDto,
-    GetSongsDto
+    GetSongsDto,
+    SongDto
 } from "@/types/dto/song.dto.js";
-import { Song } from "@prisma/client";
 import { StatusCodes } from "http-status-codes";
 import { storageService } from "./storage.service.js";
 import { musicsBucketConfigs } from "@/configs/storage.config.js";
 import { songRepo, userRepo } from "@/repositories/index.js";
 import sharp from "sharp";
 import { envConfig } from "@/configs/env.config.js";
-import logger from "@/utils/logger.js";
+import { songModelToDto } from "@/utils/modelToDto.js";
+import stableStringify from "json-stable-stringify";
+import { cacheOrFetch } from "@/utils/caching.js";
+import { namespaces } from "@/configs/redis.config.js";
+import { redisService } from "./index.js";
 interface SongServiceInterface {
     createSong: (
         data: CreateSongDto,
         userId: string,
         audioFile: Express.Multer.File,
         coverImg: Express.Multer.File
-    ) => Promise<{ song: Song; coverImageUrl: string | null }>;
-    getSong: (
-        args: GetSongDto
-    ) => Promise<{ song: Song; coverImageUrl: string | null }>;
+    ) => Promise<SongDto>;
+    getSong: (args: GetSongDto) => Promise<SongDto>;
 
-    getSongs: (
-        args: GetSongsDto
-    ) => Promise<{ song: Song; coverImageUrl: string | null }[]>;
+    getSongs: (args: GetSongsDto) => Promise<SongDto[]>;
 
     getSongSignedAudioUrl: (id: string) => Promise<string | null>;
 }
@@ -36,7 +36,7 @@ export const songService: SongServiceInterface = {
         userId: string,
         audioFile: Express.Multer.File,
         coverImg: Express.Multer.File
-    ): Promise<{ song: Song; coverImageUrl: string | null }> => {
+    ): Promise<SongDto> => {
         const user = userRepo.getOneByFilter({ id: userId });
         if (!user) {
             throw new CustomError("User not found", StatusCodes.NOT_FOUND);
@@ -78,12 +78,7 @@ export const songService: SongServiceInterface = {
                 coverImagePath: coverImagePath,
                 user: { connect: { id: userId } }
             });
-            const coverImageUrl = await storageService.generateUrl(
-                musicsBucketConfigs.name,
-                song.coverImagePath,
-                envConfig.IMAGE_URL_EXP
-            );
-            return { song, coverImageUrl };
+            return songModelToDto(song);
         } catch (err) {
             await storageService.deleteMany(
                 musicsBucketConfigs.name,
@@ -93,49 +88,60 @@ export const songService: SongServiceInterface = {
         }
     },
 
-    getSong: async (
-        args: GetSongDto
-    ): Promise<{
-        song: Song;
-        coverImageUrl: string | null;
-    }> => {
+    getSong: async (args: GetSongDto): Promise<SongDto> => {
         const { id, options } = args;
-        const song = await songRepo.getOneByFilter(
-            { id },
-            {
-                include: {
-                    user: {
+        const cacheKey = `${id}:${stableStringify(options)}`;
+        const { data: song, cacheHit } = await cacheOrFetch(
+            namespaces.Song,
+            cacheKey,
+            () =>
+                songRepo.getOneByFilter(
+                    { id },
+                    {
                         omit: {
-                            password: true
+                            albumOrder: true
                         },
                         include: {
-                            ...options
+                            user: {
+                                omit: {
+                                    password: true
+                                },
+                                include: {
+                                    ...options
+                                }
+                            }
                         }
                     }
-                }
-            }
+                )
         );
+        if (!cacheHit) {
+            redisService.setAdd(
+                {
+                    namespace: namespaces.Song,
+                    key: id,
+                    members: [stableStringify(options)!]
+                },
+                { EX: envConfig.REDIS_CACHING_EXP }
+            );
+        }
         if (!song) {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }
-        const coverImageUrl = await storageService.generateUrl(
-            musicsBucketConfigs.name,
-            song.coverImagePath,
-            envConfig.IMAGE_URL_EXP
-        );
-        return { song, coverImageUrl };
+
+        return songModelToDto(song);
     },
 
-    getSongs: async (
-        args: GetSongsDto
-    ): Promise<{ song: Song; coverImageUrl: string | null }[]> => {
+    getSongs: async (args: GetSongsDto): Promise<SongDto[]> => {
         const { options, name, userId } = args;
-        const { limit = 10, offset = 0 } = options ?? { undefined };
+        const { limit, offset } = options;
         const songs = await songRepo.searchSongs(
             { name, userId },
             {
                 take: limit,
                 skip: offset,
+                omit: {
+                    albumOrder: true
+                },
                 include: {
                     user: {
                         omit: {
@@ -148,28 +154,9 @@ export const songService: SongServiceInterface = {
                 }
             }
         );
+
         return (
-            await Promise.allSettled(
-                songs.map(async (song) => {
-                    try {
-                        const coverImageUrl = await storageService.generateUrl(
-                            musicsBucketConfigs.name,
-                            song.coverImagePath,
-                            envConfig.IMAGE_URL_EXP
-                        );
-                        return { song, coverImageUrl };
-                    } catch (err) {
-                        if (err instanceof Error) {
-                            logger.warn(err.message);
-                        } else {
-                            logger.warn(
-                                "Caught unknown error when retrieving song image url"
-                            );
-                        }
-                        throw err;
-                    }
-                })
-            )
+            await Promise.allSettled(songs.map((song) => songModelToDto(song)))
         )
             .filter((result) => result.status == "fulfilled")
             .map((result) => result.value);
@@ -180,10 +167,16 @@ export const songService: SongServiceInterface = {
         if (!song) {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }
-        const audioUrl = await storageService.generateUrl(
-            musicsBucketConfigs.name,
-            song.audioFilePath,
-            envConfig.MUCSIC_URL_EXP
+        const cacheKey = `${musicsBucketConfigs.name}:${musicsBucketConfigs.audioFolder}:${song.audioFilePath}`;
+        const { data: audioUrl } = await cacheOrFetch(
+            namespaces.Filepath,
+            cacheKey,
+            () =>
+                storageService.generateUrl(
+                    musicsBucketConfigs.name,
+                    song.audioFilePath,
+                    envConfig.MUCSIC_URL_EXP
+                )
         );
         return audioUrl;
     }

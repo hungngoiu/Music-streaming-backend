@@ -30,7 +30,7 @@ export const authController = {
                     status: "success",
                     message: "User sign in successfully",
                     data: {
-                        user: omitPropsFromObject(user, "password"),
+                        user,
                         accessToken,
                         refreshToken
                     }
@@ -52,11 +52,8 @@ export const authController = {
                     birth
                 }
             };
-            const {
-                user: createdUser,
-                accessToken,
-                refreshToken
-            } = await authService.signUp(signUpdata);
+            const { user, accessToken, refreshToken } =
+                await authService.signUp(signUpdata);
             res.status(StatusCodes.CREATED)
                 .cookie("refreshToken", refreshToken, {
                     httpOnly: true,
@@ -69,11 +66,25 @@ export const authController = {
                     status: "success",
                     message: "User sign up successfully",
                     data: {
-                        user: omitPropsFromObject(createdUser, "password"),
+                        user,
                         accessToken,
                         refreshToken
                     }
                 });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    signOut: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const refreshToken = req.cookies.refreshToken as string;
+            const accessToken = req.headers.authorization?.split(" ")[1];
+            await authService.signOut(refreshToken, accessToken);
+            res.status(StatusCodes.OK).clearCookie("refreshToken").json({
+                status: "success",
+                message: "Sign out successfully"
+            });
         } catch (err) {
             next(err);
         }
@@ -113,10 +124,10 @@ export const authController = {
     ) => {
         try {
             const payload = req.user!;
-            await authService.sendVerification(payload);
+            const email = await authService.sendVerification(payload);
             res.status(StatusCodes.OK).json({
                 status: "success",
-                message: `Sent verification to ${payload.email}`
+                message: `Sent verification to ${email}`
             });
         } catch (err) {
             next(err);

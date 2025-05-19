@@ -3,9 +3,9 @@ import { userRepo } from "@/repositories/index.js";
 import { Prisma } from "@prisma/client";
 import { AuthenticationError } from "@/errors/index.js";
 import { StatusCodes } from "http-status-codes";
-import { omitPropsFromObject, pickPropsFromObject } from "@/utils/object.js";
+import { pickPropsFromObject } from "@/utils/object.js";
 import { compareHash, generateHash } from "@/utils/bcrypt.js";
-import { SignInDto, SignUpDto } from "@/types/dto/index.js";
+import { SignInDto, SignUpDto, UserDto } from "@/types/dto/index.js";
 import { generateJwt } from "@/utils/jwt.js";
 import { UserPayload } from "@/types/jwt.js";
 import { randomInt } from "crypto";
@@ -14,18 +14,20 @@ import { redisService } from "./redis.service.js";
 import { timeToMs } from "@/utils/time.js";
 import { envConfig } from "@/configs/env.config.js";
 import { namespaces } from "@/configs/redis.config.js";
+import { userModelToDto } from "@/utils/modelToDto.js";
 interface AuthServiceInterface {
     signUp: (
         data: SignUpDto
-    ) => Promise<{ user: User; accessToken: string; refreshToken: string }>;
+    ) => Promise<{ user: UserDto; accessToken: string; refreshToken: string }>;
     signIn: (
         data: SignInDto
-    ) => Promise<{ user: User; accessToken: string; refreshToken: string }>;
+    ) => Promise<{ user: UserDto; accessToken: string; refreshToken: string }>;
+    signOut: (refreshToken: string, accessToken?: string) => Promise<void>;
     refreshToken: (
         data: UserPayload,
         receivedRefreshToken: string
     ) => Promise<{ accessToken: string; refreshToken: string }>;
-    sendVerification: (data: UserPayload) => Promise<void>;
+    sendVerification: (data: UserPayload) => Promise<string>;
     verifyCode: (userId: string, code: string) => Promise<void>;
 }
 
@@ -85,14 +87,10 @@ export const authService: AuthServiceInterface = {
             },
             { EX: 900 }
         );
-        await sendMail(mailOptions);
+        sendMail(mailOptions);
 
         const payload: UserPayload = pickPropsFromObject(user, [
             "id",
-            "email",
-            "username",
-            "createdAt",
-            "updatedAt",
             "isVerified"
         ]);
         const accessToken = generateJwt({ user: payload }, "at");
@@ -105,8 +103,9 @@ export const authService: AuthServiceInterface = {
             },
             { EX: timeToMs(envConfig.JWT_REFRESH_EXP) / 1000 }
         );
-        return { user, accessToken, refreshToken };
+        return { user: await userModelToDto(user), accessToken, refreshToken };
     },
+
     signIn: async (data: SignInDto) => {
         const { username, password } = data;
         const user = await userRepo.getOneByFilter({
@@ -124,14 +123,12 @@ export const authService: AuthServiceInterface = {
                 StatusCodes.UNAUTHORIZED
             );
         }
-        const accessToken = generateJwt(
-            { user: omitPropsFromObject(user, "password") },
-            "at"
-        );
-        const refreshToken = generateJwt(
-            { user: omitPropsFromObject(user, "password") },
-            "rt"
-        );
+        const payload: UserPayload = pickPropsFromObject(user, [
+            "id",
+            "isVerified"
+        ]);
+        const accessToken = generateJwt({ user: payload }, "at");
+        const refreshToken = generateJwt({ user: payload }, "rt");
         await redisService.set(
             {
                 namespace: namespaces.JWT_Refresh_Token,
@@ -140,8 +137,27 @@ export const authService: AuthServiceInterface = {
             },
             { EX: timeToMs(envConfig.JWT_REFRESH_EXP) / 1000 }
         );
-        return { user, accessToken, refreshToken };
+        return { user: await userModelToDto(user), accessToken, refreshToken };
     },
+
+    signOut: async (refreshToken: string, accessToken?: string) => {
+        await redisService.delete({
+            namespace: namespaces.JWT_Refresh_Token,
+            keys: [refreshToken]
+        });
+        if (accessToken) {
+            await redisService.set(
+                {
+                    namespace: namespaces.JWT_Token_Blacklist,
+                    key: accessToken,
+                    value: "revoked"
+                },
+                { EX: timeToMs(envConfig.JWT_ACCESS_EXP) / 1000 }
+            );
+        }
+        return;
+    },
+
     refreshToken: async (data: UserPayload, receivedRefreshToken: string) => {
         const { id } = data;
         const user = await userRepo.getOneByFilter({
@@ -153,14 +169,12 @@ export const authService: AuthServiceInterface = {
                 StatusCodes.NOT_FOUND
             );
         }
-        const accessToken = generateJwt(
-            { user: omitPropsFromObject(user, "password") },
-            "at"
-        );
-        const refreshToken = generateJwt(
-            { user: omitPropsFromObject(user, "password") },
-            "rt"
-        );
+        const payload: UserPayload = pickPropsFromObject(user, [
+            "id",
+            "isVerified"
+        ]);
+        const accessToken = generateJwt({ user: payload }, "at");
+        const refreshToken = generateJwt({ user: payload }, "rt");
         await redisService.set(
             {
                 namespace: namespaces.JWT_Refresh_Token,
@@ -171,12 +185,22 @@ export const authService: AuthServiceInterface = {
         );
         await redisService.delete({
             namespace: namespaces.JWT_Refresh_Token,
-            key: receivedRefreshToken
+            keys: [receivedRefreshToken]
         });
         return { accessToken, refreshToken };
     },
+
     sendVerification: async (data: UserPayload) => {
-        const { email, username, id, isVerified } = data;
+        const { id, isVerified } = data;
+        const user = await userRepo.getOneByFilter({
+            id: id
+        });
+        if (!user) {
+            throw new AuthenticationError(
+                "User not found",
+                StatusCodes.NOT_FOUND
+            );
+        }
         if (isVerified) {
             throw new AuthenticationError(
                 "User is already verified",
@@ -185,11 +209,11 @@ export const authService: AuthServiceInterface = {
         }
         const verificationCode = randomInt(1000000).toString().padStart(6, "0");
         const mailOptions = {
-            receiverEmail: email,
+            receiverEmail: user.email,
             subject: "Verification code",
             template: "verification",
             context: {
-                name: username,
+                name: user.username,
                 verificationCode: verificationCode
             }
         };
@@ -201,8 +225,10 @@ export const authService: AuthServiceInterface = {
             },
             { EX: 900 }
         );
-        await sendMail(mailOptions);
+        sendMail(mailOptions);
+        return user.email;
     },
+
     verifyCode: async (userId: string, code: string) => {
         const user = await userRepo.getOneByFilter({ id: userId });
         if (!user) {

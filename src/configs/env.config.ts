@@ -18,6 +18,7 @@ export const envConfig = {
     REDIS_PASSWORD: process.env.REDIS_PASSWORD,
     REDIS_HOST: process.env.REDIS_HOST,
     REDIS_PORT: Number(process.env.REDIS_PORT) || 17064,
+    REDIS_CACHING_EXP: Number(process.env.REDIS_CACHING_EXP) || 600,
 
     //JWT
     JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET,

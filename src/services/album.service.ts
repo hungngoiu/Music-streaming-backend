@@ -1,55 +1,51 @@
 import { AuthorizationError, CustomError } from "@/errors/index.js";
 import { albumRepo, songRepo } from "@/repositories/index.js";
 import {
+    AlbumDto,
     CreateAlbumDto,
     GetAlbumDto,
     GetAlbumsDto
 } from "@/types/dto/index.js";
-import { Album, Prisma, Song } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { StatusCodes } from "http-status-codes";
 import sharp from "sharp";
 import { storageService } from "./storage.service.js";
 import { musicsBucketConfigs } from "@/configs/storage.config.js";
-import { envConfig } from "@/configs/index.js";
-import logger from "@/utils/logger.js";
-import { omitPropsFromObject } from "@/utils/object.js";
 import { getDuplicates } from "@/utils/array.js";
-
+import { albumModelToDto } from "@/utils/modelToDto.js";
+import stableStringify from "json-stable-stringify";
+import { cacheOrFetch } from "@/utils/caching.js";
+import { namespaces } from "@/configs/redis.config.js";
+import { redisService } from "./redis.service.js";
+import { envConfig } from "@/configs/index.js";
 interface AlbumServiceInterface {
     createAlbum: (
         data: CreateAlbumDto,
         userId: string,
         coverImg: Express.Multer.File
-    ) => Promise<{ album: Album; coverImageUrl: string | null }>;
+    ) => Promise<AlbumDto>;
     setSongs: (
         albumId: string,
         songIds: string[],
         userId: string
-    ) => Promise<void>;
+    ) => Promise<AlbumDto>;
 
     addSong: (
         albumId: string,
         songId: string,
         userId: string,
         index?: number
-    ) => Promise<void>;
+    ) => Promise<AlbumDto>;
 
     addSongs: (
         albumId: string,
         songIds: string[],
         userId: string
-    ) => Promise<void>;
+    ) => Promise<AlbumDto>;
 
-    getAlbum: (args: GetAlbumDto) => Promise<{
-        album: Album & {
-            songsWithImageUrl?: { song: Song; coverImageUrl: string | null }[];
-        };
-        coverImageUrl: string | null;
-    }>;
+    getAlbum: (args: GetAlbumDto) => Promise<AlbumDto>;
 
-    getAlbums: (
-        args: GetAlbumsDto
-    ) => Promise<{ album: Album; coverImageUrl: string | null }[]>;
+    getAlbums: (args: GetAlbumsDto) => Promise<AlbumDto[]>;
 
     publicAlbum: (albumId: string, userId: string) => Promise<void>;
 }
@@ -59,7 +55,7 @@ export const albumService: AlbumServiceInterface = {
         data: CreateAlbumDto,
         userId: string,
         coverImg: Express.Multer.File
-    ): Promise<{ album: Album; coverImageUrl: string | null }> => {
+    ): Promise<AlbumDto> => {
         const user = albumRepo.getOneByFilter({ id: userId });
         if (!user) {
             throw new CustomError("User not found", StatusCodes.NOT_FOUND);
@@ -83,12 +79,7 @@ export const albumService: AlbumServiceInterface = {
                 coverImagePath: coverImagePath,
                 user: { connect: { id: userId } }
             });
-            const coverImageUrl = await storageService.generateUrl(
-                musicsBucketConfigs.name,
-                album.coverImagePath,
-                envConfig.IMAGE_URL_EXP
-            );
-            return { album, coverImageUrl };
+            return albumModelToDto(album);
         } catch (err) {
             await storageService.deleteOne(
                 musicsBucketConfigs.name,
@@ -102,7 +93,7 @@ export const albumService: AlbumServiceInterface = {
         albumId: string,
         songIds: string[],
         userId: string
-    ): Promise<void> => {
+    ): Promise<AlbumDto> => {
         const album = await albumRepo.getOneByFilter({ id: albumId });
         if (!album) {
             throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
@@ -160,7 +151,30 @@ export const albumService: AlbumServiceInterface = {
                 StatusCodes.BAD_REQUEST
             );
         }
-        await albumRepo.connectSongs(albumId, songIds);
+
+        const updatedAlbum = await albumRepo.connectSongs(albumId, songIds);
+
+        // Delete affected cache
+        redisService
+            .getSetMembers({
+                namespace: namespaces.Album,
+                key: album.id
+            })
+            .then((cacheKeys) =>
+                cacheKeys.filter((key) => key.includes(`"songs":true`))
+            )
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.Album,
+                        keys: [
+                            ...affectedKeys.map((key) => `${albumId}:${key}`)
+                        ]
+                    });
+                }
+            });
+
+        return albumModelToDto(updatedAlbum);
     },
 
     addSong: async (
@@ -168,7 +182,7 @@ export const albumService: AlbumServiceInterface = {
         songId: string,
         userId: string,
         index?: number
-    ): Promise<void> => {
+    ): Promise<AlbumDto> => {
         const album = (await albumRepo.getOneByFilter(
             { id: albumId },
             {
@@ -193,13 +207,45 @@ export const albumService: AlbumServiceInterface = {
         if (song.userId != userId) {
             throw new AuthorizationError("Song not belong to user");
         }
-        if (album.songs.map((song) => song.id).includes(songId)) {
-            throw new CustomError(
-                "The song is already existed in the album",
-                StatusCodes.CONFLICT
-            );
+        if (song.albumId) {
+            if (song.albumId == albumId) {
+                throw new CustomError(
+                    "The song is already existed in the album",
+                    StatusCodes.CONFLICT
+                );
+            }
+            else {
+                throw new CustomError(
+                    "The song is assigned to another album",
+                    StatusCodes.CONFLICT
+                );
+            }
+
         }
-        await albumRepo.addSong(album, songId, index);
+
+        const result = await albumRepo.addSong(album, songId, index);
+
+        // Delete affected cache
+        redisService
+            .getSetMembers({
+                namespace: namespaces.Album,
+                key: album.id
+            })
+            .then((cacheKeys) =>
+                cacheKeys.filter((key) => key.includes(`"songs":true`))
+            )
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.Album,
+                        keys: [
+                            ...affectedKeys.map((key) => `${albumId}:${key}`)
+                        ]
+                    });
+                }
+            });
+
+        return albumModelToDto(result);
     },
 
     addSongs: async (albumId: string, songIds: string[], userId: string) => {
@@ -264,95 +310,95 @@ export const albumService: AlbumServiceInterface = {
                 StatusCodes.BAD_REQUEST
             );
         }
+        // songs that already in the album are ignored
         const unassignedSongIds = songs
             .filter((song) => !song.albumId)
             .map((song) => song.id);
-        await albumRepo.addSongs(album, unassignedSongIds);
+
+        const result = await albumRepo.addSongs(album, unassignedSongIds);
+
+        // Delete affected cache
+        redisService
+            .getSetMembers({
+                namespace: namespaces.Album,
+                key: album.id
+            })
+            .then((cacheKeys) =>
+                cacheKeys.filter((key) => key.includes(`"songs":true`))
+            )
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.Album,
+                        keys: [
+                            ...affectedKeys.map((key) => `${albumId}:${key}`)
+                        ]
+                    });
+                }
+            });
+
+        return albumModelToDto(result);
     },
 
-    getAlbum: async (args: GetAlbumDto) => {
+    getAlbum: async (args: GetAlbumDto): Promise<AlbumDto> => {
         const { id, options, userId } = args;
-        const album = await albumRepo.getOneByFilter(
-            {
-                id,
-                OR: [
+        const cacheKey = `${id}:${stableStringify(options)}`;
+        const { data: album, cacheHit } = await cacheOrFetch(
+            namespaces.Album,
+            cacheKey,
+            () =>
+                albumRepo.getOneByFilter(
                     {
-                        userId
+                        id,
                     },
-                    { isPublic: true }
-                ]
-            },
-            {
-                include: {
-                    user: {
-                        omit: {
-                            password: true
-                        },
+                    {
                         include: {
-                            userProfile: options?.userProfile
+                            user: {
+                                omit: {
+                                    password: true
+                                },
+                                include: {
+                                    userProfile: options.userProfile
+                                }
+                            },
+                            songs: options.songs
+                                ? {
+                                    orderBy: {
+                                        albumOrder: "asc"
+                                    },
+                                    omit: {
+                                        albumOrder: true
+                                    }
+                                }
+                                : false
                         }
-                    },
-                    songs: options?.songs
-                        ? {
-                              orderBy: {
-                                  albumOrder: "asc"
-                              }
-                          }
-                        : undefined
-                }
-            }
+                    }
+                )
         );
+
+        if (!cacheHit) {
+            redisService.setAdd(
+                {
+                    namespace: namespaces.Album,
+                    key: id,
+                    members: [stableStringify(options)!]
+                },
+                { EX: envConfig.REDIS_CACHING_EXP }
+            );
+        }
+
         if (!album) {
             throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
         }
-        let songsWithImageUrl = undefined;
-        if (album.songs) {
-            songsWithImageUrl = (
-                await Promise.allSettled(
-                    album.songs.map(async (song) => {
-                        try {
-                            const coverImageUrl =
-                                await storageService.generateUrl(
-                                    musicsBucketConfigs.name,
-                                    song.coverImagePath,
-                                    envConfig.IMAGE_URL_EXP
-                                );
-                            return { song, coverImageUrl };
-                        } catch (err) {
-                            if (err instanceof Error) {
-                                logger.warn(err.message);
-                            } else {
-                                logger.warn(
-                                    "Caught unknown error when retrieving song image url"
-                                );
-                            }
-                            throw err;
-                        }
-                    })
-                )
-            )
-                .filter((result) => result.status == "fulfilled")
-                .map((result) => result.value);
+        if (!album.isPublic && album.userId != userId) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
         }
-        const coverImageUrl = await storageService.generateUrl(
-            musicsBucketConfigs.name,
-            album.coverImagePath,
-            envConfig.IMAGE_URL_EXP
-        );
-        return {
-            album: {
-                ...omitPropsFromObject(album, "songs"),
-                songsWithImageUrl: songsWithImageUrl
-            },
-            coverImageUrl
-        };
+        return albumModelToDto(album);
     },
 
-    getAlbums: async (
-        args: GetAlbumsDto
-    ): Promise<{ album: Album; coverImageUrl: string | null }[]> => {
+    getAlbums: async (args: GetAlbumsDto): Promise<AlbumDto[]> => {
         const { options, name, userId, loginUserId } = args;
-        const { limit = 10, offset = 0 } = options ?? { undefined };
+        const { limit, offset } = options;
         const albums = await albumRepo.searchAlbums(
             { name, userId },
             {
@@ -364,41 +410,29 @@ export const albumService: AlbumServiceInterface = {
                             password: true
                         },
                         include: {
-                            userProfile: options?.userProfiles
+                            userProfile: options.userProfiles
                         }
                     }
                 }
             },
             loginUserId
         );
+
         return (
             await Promise.allSettled(
-                albums.map(async (album) => {
-                    try {
-                        const coverImageUrl = await storageService.generateUrl(
-                            musicsBucketConfigs.name,
-                            album.coverImagePath,
-                            envConfig.IMAGE_URL_EXP
-                        );
-                        return { album, coverImageUrl };
-                    } catch (err) {
-                        if (err instanceof Error) {
-                            logger.warn(err.message);
-                        } else {
-                            logger.warn(
-                                "Caught unknown error when retrieving song image url"
-                            );
-                        }
-                        throw err;
-                    }
-                })
+                albums.map((album) => albumModelToDto(album))
             )
         )
             .filter((result) => result.status == "fulfilled")
             .map((result) => result.value);
     },
+
     publicAlbum: async (albumId: string, userId: string): Promise<void> => {
-        const album = await albumRepo.getOneByFilter({ id: albumId });
+        const cacheKey = `${albumId}:${stableStringify({})}`;
+        const { data: album } = await cacheOrFetch(namespaces.Album, cacheKey, () => albumRepo.getOneByFilter({ id: albumId }));
+        if (!album) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
+        }
         if (!album) {
             throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
         }

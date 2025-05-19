@@ -4,12 +4,22 @@ import { StatusCodes } from "http-status-codes";
 import sharp from "sharp";
 import { storageService } from "./storage.service.js";
 import { usersBucketConfigs } from "@/configs/storage.config.js";
+import { GetUsersDto, UpdateProfileDto, UserDto } from "@/types/dto/index.js";
+import { userModelToDto } from "@/utils/modelToDto.js";
+import { cacheOrFetch } from "@/utils/caching.js";
+import { namespaces } from "@/configs/redis.config.js";
+import { redisService } from "./redis.service.js";
+import { envConfig } from "@/configs/index.js";
+import stableStringify from "json-stable-stringify";
 
 interface UserServiceInterface {
     updateAvatar: (
         userId: string,
         avatar: Express.Multer.File
     ) => Promise<void>;
+    updateProfile: (userId: string, data: UpdateProfileDto) => Promise<UserDto>;
+    getUser: (userId: string) => Promise<UserDto>;
+    getUsers: (args: GetUsersDto) => Promise<UserDto[]>;
 }
 
 export const userService: UserServiceInterface = {
@@ -20,7 +30,6 @@ export const userService: UserServiceInterface = {
         if (!userProfile) {
             throw new CustomError("User not found", StatusCodes.NOT_FOUND);
         }
-
         //Format the image before uploading
         const avatarBuffer = await sharp(avatar.buffer)
             .resize(512, 512, {
@@ -38,7 +47,7 @@ export const userService: UserServiceInterface = {
 
         try {
             await userRepo.updateProfile(
-                { id: userProfile.id },
+                { id: userProfile!.id },
                 { avatarImagePath }
             );
         } catch (err) {
@@ -54,5 +63,108 @@ export const userService: UserServiceInterface = {
                 oldAvatarImagePath
             );
         }
+
+        // Delete affected cache
+        redisService
+            .getSetMembers({
+                namespace: namespaces.User,
+                key: userId
+            })
+            .then((cacheKeys) =>
+                cacheKeys.filter((key) => key.includes(`"userProfile":true`))
+            )
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.User,
+                        keys: [...affectedKeys.map((key) => `${userId}:${key}`)]
+                    });
+                }
+            });
+    },
+
+    updateProfile: async (userId: string, data: UpdateProfileDto) => {
+        const userProfile = await userRepo.getOneProfileByfilter({
+            userId: userId
+        });
+        if (!userProfile) {
+            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
+        }
+        const updatedUser = await userRepo.update(
+            { id: userId },
+            {
+                userProfile: {
+                    update: data
+                }
+            },
+            {
+                include: {
+                    userProfile: true
+                }
+            }
+        );
+
+        // Delete affected cache
+        redisService
+            .getSetMembers({
+                namespace: namespaces.User,
+                key: userId
+            })
+            .then((cacheKeys) =>
+                cacheKeys.filter((key) => key.includes(`"userProfile":true`))
+            )
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.User,
+                        keys: [...affectedKeys.map((key) => `${userId}:${key}`)]
+                    });
+                }
+            });
+        return userModelToDto(updatedUser);
+    },
+
+    getUser: async (userId: string) => {
+        const options = { userProfile: true };
+        const cacheKey = `${userId}:${stableStringify(options)}`;
+        const { data: user, cacheHit } = await cacheOrFetch(
+            namespaces.User,
+            cacheKey,
+            () => userRepo.getOneByFilter({ id: userId }, {include: options})
+        );
+        if (!cacheHit) {
+            redisService.setAdd(
+                {
+                    namespace: namespaces.User,
+                    key: userId,
+                    members: [stableStringify(options)!]
+                },
+                { EX: envConfig.REDIS_CACHING_EXP }
+            );
+        }
+        if (!user) {
+            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
+        }
+        return userModelToDto(user);
+    },
+
+    getUsers: async (args: GetUsersDto): Promise<UserDto[]> => {
+        const { options, name } = args;
+        const { limit, offset} = options;
+        const users = await userRepo.searchUsers(
+            { name },
+            {
+                take: limit,
+                skip: offset,
+                include: {
+                    userProfile: true
+                }
+            }
+        );
+        return (
+            await Promise.allSettled(users.map((user) => userModelToDto(user)))
+        )
+            .filter((result) => result.status == "fulfilled")
+            .map((result) => result.value);
     }
 };

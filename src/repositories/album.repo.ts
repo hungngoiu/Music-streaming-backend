@@ -2,13 +2,12 @@ import { Album, Prisma } from "@prisma/client";
 import prismaClient from "@/databases/prisma.js";
 import { searchAlbums, searchAlbumsWithUserId } from "@prisma/client/sql";
 import { omitPropsFromObject } from "@/utils/object.js";
-import { AlbumWithSongs } from "@/types/dto/index.js";
 
 export const albumRepo = {
     create: (
         data: Prisma.AlbumCreateInput,
         options?: Omit<Prisma.AlbumCreateArgs, "data">
-    ): Promise<Album> => {
+    ) => {
         return prismaClient.album.create({
             data,
             ...options
@@ -18,7 +17,7 @@ export const albumRepo = {
     getOneByFilter: (
         filter: Prisma.AlbumWhereInput,
         options?: Omit<Prisma.AlbumFindFirstArgs, "where">
-    ): Promise<AlbumWithSongs | null> => {
+    ) => {
         return prismaClient.album.findFirst({ where: filter, ...options });
     },
 
@@ -26,7 +25,7 @@ export const albumRepo = {
         filter: Prisma.AlbumWhereUniqueInput,
         data: Prisma.AlbumUpdateInput,
         options?: Omit<Prisma.AlbumUpdateArgs, "data" | "where">
-    ): Promise<Album> => {
+    ) => {
         return prismaClient.album.update({
             where: filter,
             data,
@@ -74,8 +73,8 @@ export const albumRepo = {
     },
 
     connectSongs: async (albumId: string, songIds: string[]) => {
-        await prismaClient.$transaction(async (tx) => {
-            await tx.album.update({
+        return await prismaClient.$transaction(async (tx) => {
+            const album = await tx.album.update({
                 where: {
                     id: albumId
                 },
@@ -91,16 +90,26 @@ export const albumRepo = {
                             return { id: id };
                         })
                     }
+                },
+                include: {
+                    songs: true
                 }
             });
-            await Promise.allSettled(
-                songIds.map((id, index) =>
-                    tx.song.update({
-                        where: { id },
-                        data: { albumOrder: (index + 1) * 10 }
-                    })
+            return {
+                ...album,
+                songs: (
+                    await Promise.allSettled(
+                        songIds.map((id, index) =>
+                            tx.song.update({
+                                where: { id },
+                                data: { albumOrder: (index + 1) * 10 }
+                            })
+                        )
+                    )
                 )
-            );
+                    .filter((result) => result.status == "fulfilled")
+                    .map((result) => result.value)
+            };
         });
     },
 
@@ -116,7 +125,7 @@ export const albumRepo = {
                 (a, b) => a.albumOrder! - b.albumOrder!
             );
             if (songs.length == 0) {
-                await tx.song.update({
+                const song = await tx.song.update({
                     where: {
                         id: songId
                     },
@@ -129,10 +138,10 @@ export const albumRepo = {
                         }
                     }
                 });
-                return;
+                return { ...album, songs: [song] };
             }
             if (index == undefined || index >= songs.length) {
-                await tx.song.update({
+                const song = await tx.song.update({
                     where: {
                         id: songId
                     },
@@ -145,14 +154,14 @@ export const albumRepo = {
                         }
                     }
                 });
-                return;
+                return { ...album, songs: [...songs, song] };
             }
             const prev = index > 0 ? songs[index - 1].albumOrder! : -1;
             const next = songs[index].albumOrder!;
 
             // check if there is space for insert
             if (next - prev > 1) {
-                await tx.song.update({
+                const song = await tx.song.update({
                     where: {
                         id: songId
                     },
@@ -165,7 +174,8 @@ export const albumRepo = {
                         }
                     }
                 });
-                return;
+                songs.splice(index, 0, song);
+                return { ...album, songs: songs };
             }
             // repopulate the sparse list
             let start = index - 5 >= 0 ? index - 5 : 0;
@@ -194,7 +204,7 @@ export const albumRepo = {
                         })
                     )
                 );
-                await tx.song.update({
+                const song = await tx.song.update({
                     where: {
                         id: songId
                     },
@@ -207,7 +217,8 @@ export const albumRepo = {
                         }
                     }
                 });
-                return;
+                songs.splice(index, 0, song);
+                return { ...album, songs };
             }
             await Promise.allSettled(
                 songs.map((song, index) =>
@@ -221,7 +232,7 @@ export const albumRepo = {
                     })
                 )
             );
-            await tx.song.update({
+            const song = await tx.song.update({
                 where: {
                     id: songId
                 },
@@ -234,7 +245,8 @@ export const albumRepo = {
                     }
                 }
             });
-            return;
+            songs.splice(index, 0, song);
+            return { ...album, songs: songs };
         });
     },
 
@@ -249,20 +261,26 @@ export const albumRepo = {
         if (songs.length != 0) {
             startIndex = songs[songs.length - 1].albumOrder! + 10;
         }
-        await prismaClient.$transaction(
-            songIds.map((id, index) =>
-                prismaClient.song.update({
-                    where: { id },
-                    data: {
-                        albumOrder: startIndex + index * 10,
-                        album: {
-                            connect: {
-                                id: album.id
+        return {
+            ...album,
+            songs: [
+                ...songs,
+                ...(await prismaClient.$transaction(
+                    songIds.map((id, index) =>
+                        prismaClient.song.update({
+                            where: { id },
+                            data: {
+                                albumOrder: startIndex + index * 10,
+                                album: {
+                                    connect: {
+                                        id: album.id
+                                    }
+                                }
                             }
-                        }
-                    }
-                })
-            )
-        );
+                        })
+                    )
+                ))
+            ]
+        };
     }
 };

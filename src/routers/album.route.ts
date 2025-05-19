@@ -1,9 +1,16 @@
 import { albumRouteConfig } from "@/configs/routes/index.js";
 import { albumController } from "@/controllers/album.controller.js";
-import { verifyTokenMiddleware } from "@/middlewares/auth.middleware.js";
 import {
+    isVerifiedUserMiddleware,
+    singleFileUpload,
+    verifyTokenMiddleware
+} from "@/middlewares/index.js";
+import {
+    addSongSchema,
+    addSongsSchema,
     getAlbumQuerySchema,
-    getAlbumsQuerySchema
+    getAlbumsQuerySchema,
+    setSongsSchema
 } from "@/schemas/album.schema.js";
 import { dataValidation } from "@/validations/data.validations.js";
 import { Router, Request, Response } from "express";
@@ -17,6 +24,48 @@ router.get(albumRouteConfig.status, (req: Request, res: Response) => {
         status: "OK"
     });
 });
+
+router.post(
+    albumRouteConfig.createAlbum,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    singleFileUpload({
+        fieldName: "coverImage",
+        allowedExtensions: [".jpg", "jpeg", ".png"]
+    }),
+    albumController.createAlbum
+);
+
+router.patch(
+    albumRouteConfig.addSong,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    dataValidation(addSongSchema, "body"),
+    albumController.addSong
+);
+
+router.patch(
+    albumRouteConfig.addSongs,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    dataValidation(addSongsSchema, "body"),
+    albumController.addSongs
+);
+
+router.put(
+    albumRouteConfig.setSongs,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    dataValidation(setSongsSchema, "body"),
+    albumController.setSongs
+);
+
+router.patch(
+    albumRouteConfig.publicAlbum,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    albumController.publicAlbum
+);
 
 router.get(
     albumRouteConfig.getAlbums,

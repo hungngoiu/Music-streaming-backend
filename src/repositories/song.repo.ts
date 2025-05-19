@@ -7,7 +7,7 @@ export const songRepo = {
     create: (
         data: Prisma.SongCreateInput,
         options?: Omit<Prisma.SongCreateArgs, "data">
-    ): Promise<Song> => {
+    ) => {
         return prismaClient.song.create({
             data: data,
             ...options
@@ -17,7 +17,7 @@ export const songRepo = {
     getOneByFilter: (
         filter: Prisma.SongWhereInput,
         options?: Omit<Prisma.SongFindFirstArgs, "where">
-    ): Promise<Song | null> => {
+    ) => {
         return prismaClient.song.findFirst({
             where: filter,
             ...options
@@ -27,7 +27,7 @@ export const songRepo = {
     getManyByFilter: (
         filter: Prisma.SongWhereInput,
         options?: Omit<Prisma.SongFindManyArgs, "where">
-    ): Promise<Song[]> => {
+    ) => {
         return prismaClient.song.findMany({
             where: filter,
             ...options
@@ -37,7 +37,7 @@ export const songRepo = {
     searchSongs: async (
         filter: { userId?: string; name?: string },
         options?: Omit<Prisma.SongFindManyArgs, "where">
-    ): Promise<Song[]> => {
+    ) => {
         const { name = "", userId } = filter;
         const { skip = 0, take = 10 } = options ?? { undefined };
         const sql = userId
@@ -60,7 +60,7 @@ export const songRepo = {
         filter: Prisma.SongWhereUniqueInput,
         data: Prisma.SongUpdateInput,
         options?: Omit<Prisma.SongUpdateArgs, "where" | "data">
-    ): Promise<Song> => {
+    ) => {
         return prismaClient.song.update({
             where: filter,
             data: data,

@@ -28,6 +28,12 @@ router.post(
 );
 
 router.post(
+    authRouteConfig.signOut,
+    verifyTokenMiddleware({ type: "both", accessTokenRequired: false }),
+    authController.signOut
+);
+
+router.post(
     authRouteConfig.refreshToken,
     verifyTokenMiddleware({ type: "rt" }),
     authController.refreshToken

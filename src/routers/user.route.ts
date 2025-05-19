@@ -7,7 +7,12 @@ import {
     isVerifiedUserMiddleware,
     verifyTokenMiddleware
 } from "@/middlewares/auth.middleware.js";
-import { fieldsFileUpload, singleFileUpload } from "@/middlewares/index.js";
+import { singleFileUpload } from "@/middlewares/index.js";
+import { dataValidation } from "@/validations/data.validations.js";
+import {
+    getUsersQuerySchema,
+    updateUserProfileSchema
+} from "@/schemas/user.shema.js";
 const router = Router();
 
 router.get(userRouteConfig.status, (req: Request, res: Response) => {
@@ -16,67 +21,6 @@ router.get(userRouteConfig.status, (req: Request, res: Response) => {
         status: "OK"
     });
 });
-
-router.post(
-    userRouteConfig.uploadSong,
-    verifyTokenMiddleware({ type: "at" }),
-    isVerifiedUserMiddleware,
-    fieldsFileUpload({
-        fields: [
-            {
-                name: "audioFile",
-                maxCount: 1,
-                allowedExtensions: [".mp3", ".wav"]
-            },
-            {
-                name: "coverImage",
-                maxCount: 1,
-                allowedExtensions: [".jpg", ".jpeg", ".png"]
-            }
-        ]
-    }),
-    isVerifiedUserMiddleware,
-    userController.uploadSong
-);
-
-router.post(
-    userRouteConfig.createAlbum,
-    verifyTokenMiddleware({ type: "at" }),
-    isVerifiedUserMiddleware,
-    singleFileUpload({
-        fieldName: "coverImage",
-        allowedExtensions: [".jpg", "jpeg", ".png"]
-    }),
-    userController.createAlbum
-);
-
-router.patch(
-    userRouteConfig.addSong,
-    verifyTokenMiddleware({ type: "at" }),
-    isVerifiedUserMiddleware,
-    userController.addSong
-);
-
-router.patch(
-    userRouteConfig.addSongs,
-    verifyTokenMiddleware({ type: "at" }),
-    isVerifiedUserMiddleware,
-    userController.addSongs
-);
-
-router.put(
-    userRouteConfig.setSongs,
-    verifyTokenMiddleware({ type: "at" }),
-    isVerifiedUserMiddleware,
-    userController.setSongs
-);
-
-router.patch(
-    userRouteConfig.publicAlbum,
-    verifyTokenMiddleware({ type: "at" }),
-    isVerifiedUserMiddleware,
-    userController.publicAlbum
-);
 
 router.put(
     userRouteConfig.updateAvatar,
@@ -88,5 +32,21 @@ router.put(
     }),
     userController.updateAvatar
 );
+
+router.patch(
+    userRouteConfig.updateProfile,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    dataValidation(updateUserProfileSchema, "body"),
+    userController.updateProfile
+);
+
+router.get(
+    userRouteConfig.getUsers,
+    dataValidation(getUsersQuerySchema, "query"),
+    userController.getUsers
+);
+
+router.get(userRouteConfig.getUser, userController.getUser);
 
 export default router;
