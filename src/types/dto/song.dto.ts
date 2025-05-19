@@ -14,16 +14,16 @@ export type CreateSongDto = {
     lyric?: string;
 };
 
-export type GetSongDto = Partial<Pick<Song, "id">> & {
-    options?: {
-        userProfile?: boolean;
+export type GetSongDto = Pick<Song, "id"> & {
+    options: {
+        userProfile: boolean;
     };
 };
 
 export type GetSongsDto = Partial<Pick<Song, "name" | "userId">> & {
-    options?: {
-        limit?: number;
-        offset?: number;
-        userProfiles?: boolean;
+    options: {
+        limit: number;
+        offset: number;
+        userProfiles: boolean;
     };
 };

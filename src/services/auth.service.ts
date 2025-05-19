@@ -143,7 +143,7 @@ export const authService: AuthServiceInterface = {
     signOut: async (refreshToken: string, accessToken?: string) => {
         await redisService.delete({
             namespace: namespaces.JWT_Refresh_Token,
-            key: refreshToken
+            keys: [refreshToken]
         });
         if (accessToken) {
             await redisService.set(
@@ -152,7 +152,7 @@ export const authService: AuthServiceInterface = {
                     key: accessToken,
                     value: "revoked"
                 },
-                { EX: 900 }
+                { EX: timeToMs(envConfig.JWT_ACCESS_EXP) / 1000 }
             );
         }
         return;
@@ -185,7 +185,7 @@ export const authService: AuthServiceInterface = {
         );
         await redisService.delete({
             namespace: namespaces.JWT_Refresh_Token,
-            key: receivedRefreshToken
+            keys: [receivedRefreshToken]
         });
         return { accessToken, refreshToken };
     },

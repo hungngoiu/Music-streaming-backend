@@ -13,5 +13,11 @@ export type RedisGetDto = {
 
 export type RedisDeleteDto = {
     namespace: namespaces;
+    keys: string[];
+};
+
+export type RedisSetAddDto = {
+    namespace: string;
     key: string;
+    members: string[];
 };

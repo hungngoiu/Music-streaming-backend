@@ -13,6 +13,8 @@ import {
 } from "@/types/models.js";
 import { omitPropsFromObject } from "./object.js";
 import { AlbumDto, SongDto } from "@/types/dto/index.js";
+import { cacheOrFetch } from "./caching.js";
+import { namespaces } from "@/configs/redis.config.js";
 
 export const userModelToDto = async (
     user: OptionalRelationsDeep<FullyNestedUser>
@@ -21,11 +23,18 @@ export const userModelToDto = async (
     if (user.userProfile) {
         let avatarImageUrl: string | null = null;
         if (user.userProfile.avatarImagePath) {
-            avatarImageUrl = await storageService.generateUrl(
-                usersBucketConfigs.name,
-                user.userProfile.avatarImagePath!,
-                envConfig.IMAGE_URL_EXP
-            );
+            avatarImageUrl = (
+                await cacheOrFetch(
+                    namespaces.Filepath,
+                    `${usersBucketConfigs.name}:${user.userProfile.avatarImagePath}`,
+                    () =>
+                        storageService.generateUrl(
+                            usersBucketConfigs.name,
+                            user.userProfile!.avatarImagePath!,
+                            envConfig.IMAGE_URL_EXP
+                        )
+                )
+            ).data;
         }
         userProfile = {
             ...omitPropsFromObject(user.userProfile, "avatarImagePath"),
@@ -47,11 +56,18 @@ export const songModelToDto = async (
         user = await userModelToDto(song.user);
     }
 
-    const coverImageUrl: string | null = await storageService.generateUrl(
-        musicsBucketConfigs.name,
-        song.coverImagePath,
-        envConfig.IMAGE_URL_EXP
-    );
+    const coverImageUrl: string | null = (
+        await cacheOrFetch(
+            namespaces.Filepath,
+            `${musicsBucketConfigs.name}:${song.coverImagePath}`,
+            () =>
+                storageService.generateUrl(
+                    musicsBucketConfigs.name,
+                    song.coverImagePath,
+                    envConfig.IMAGE_URL_EXP
+                )
+        )
+    ).data;
 
     return {
         ...omitPropsFromObject(song, [
@@ -82,11 +98,18 @@ export const albumModelToDto = async (
             .filter((result) => result.status == "fulfilled")
             .map((result) => result.value);
     }
-    const coverImageUrl: string | null = await storageService.generateUrl(
-        musicsBucketConfigs.name,
-        album.coverImagePath,
-        envConfig.IMAGE_URL_EXP
-    );
+    const coverImageUrl: string | null = (
+        await cacheOrFetch(
+            namespaces.Filepath,
+            `${musicsBucketConfigs.name}:${album.coverImagePath}`,
+            () =>
+                storageService.generateUrl(
+                    musicsBucketConfigs.name,
+                    album.coverImagePath,
+                    envConfig.IMAGE_URL_EXP
+                )
+        )
+    ).data;
     return {
         ...omitPropsFromObject(album, ["coverImagePath", "songs", "user"]),
         user,

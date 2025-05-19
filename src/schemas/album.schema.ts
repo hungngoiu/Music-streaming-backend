@@ -5,13 +5,16 @@ export const uploadAlbumSchema = z.object({
     name: z.string().min(1, "Name required")
 });
 
-export const setSongsSchema = z.array(z.string());
+export const setSongsSchema = z.string().array();
 
 export const addSongSchema = z.object({
     index: z.number().nonnegative("The index must not be negative").optional()
 });
 
-export const addSongsSchema = z.array(z.string());
+export const addSongsSchema = z
+    .string()
+    .array()
+    .nonempty("At least one songId must be provided");
 
 export const getAlbumQuerySchema = z.object({
     userProfile: booleanSchema.optional(),

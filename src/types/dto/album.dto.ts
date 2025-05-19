@@ -1,4 +1,4 @@
-import { Album, Song } from "@prisma/client";
+import { Album } from "@prisma/client";
 import { UserDto, UserProfileDto } from "./user.dto.js";
 import { SongDto } from "./song.dto.js";
 
@@ -13,23 +13,19 @@ export type CreateAlbumDto = {
     name: string;
 };
 
-export type GetAlbumDto = Partial<Pick<Album, "id">> & {
-    options?: {
-        userProfile?: boolean;
-        songs?: boolean;
+export type GetAlbumDto = Pick<Album, "id"> & {
+    options: {
+        userProfile: boolean;
+        songs: boolean;
     };
     userId?: string;
 };
 
 export type GetAlbumsDto = Partial<Pick<Album, "name" | "userId">> & {
-    options?: {
-        limit?: number;
-        offset?: number;
-        userProfiles?: boolean;
+    options: {
+        limit: number;
+        offset: number;
+        userProfiles: boolean;
     };
     loginUserId?: string;
-};
-
-export type AlbumWithSongs = Album & {
-    songs?: Song[];
 };

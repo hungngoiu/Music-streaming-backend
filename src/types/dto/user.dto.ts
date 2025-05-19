@@ -13,8 +13,8 @@ export type UpdateProfileDto = Partial<
 >;
 
 export type GetUsersDto = Partial<Pick<UserProfile, "name">> & {
-    options?: {
-        limit?: number;
-        offset?: number;
+    options: {
+        limit: number;
+        offset: number;
     };
 };

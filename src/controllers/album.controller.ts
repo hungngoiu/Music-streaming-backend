@@ -48,11 +48,18 @@ export const albumController = {
             const songIds = req.body as z.infer<typeof setSongsSchema>;
             const user = req.user!;
 
-            await albumService.setSongs(albumId, songIds, user.id);
+            const album = await albumService.setSongs(
+                albumId,
+                songIds,
+                user.id
+            );
 
             res.status(StatusCodes.OK).json({
                 status: "success",
-                message: "Set songs for album successfully"
+                message: "Set songs for album successfully",
+                data: {
+                    album
+                }
             });
         } catch (err) {
             next(err);
@@ -66,7 +73,7 @@ export const albumController = {
             const bodyData = req.body as z.infer<typeof addSongSchema>;
             const user = req.user!;
 
-            await albumService.addSong(
+            const album = await albumService.addSong(
                 albumId,
                 songId,
                 user.id,
@@ -75,7 +82,10 @@ export const albumController = {
 
             res.status(StatusCodes.OK).json({
                 status: "success",
-                message: "Add song to album successfully"
+                message: "Add song to album successfully",
+                data: {
+                    album
+                }
             });
         } catch (err) {
             next(err);
@@ -88,11 +98,18 @@ export const albumController = {
             const songIds = req.body as z.infer<typeof addSongsSchema>;
             const user = req.user!;
 
-            await albumService.addSongs(albumId, songIds, user.id);
+            const album = await albumService.addSongs(
+                albumId,
+                songIds,
+                user.id
+            );
 
             res.status(StatusCodes.OK).json({
                 status: "success",
-                message: "Add songs to album successfully"
+                message: "Add songs to album successfully",
+                data: {
+                    album
+                }
             });
         } catch (err) {
             next(err);
@@ -120,7 +137,7 @@ export const albumController = {
             const albumId = req.params.id;
             const queries = req.query as z.infer<typeof getAlbumQuerySchema>;
             const userId = req.user?.id;
-            const { userProfile, songs } = queries;
+            const { userProfile = false, songs = false } = queries;
             const album = await albumService.getAlbum({
                 id: albumId,
                 options: {
@@ -144,7 +161,7 @@ export const albumController = {
         try {
             const queries = req.query as z.infer<typeof getAlbumsQuerySchema>;
             const loginUserId = req.user?.id;
-            const { limit, offset, userProfiles } = queries;
+            const { limit = 10, offset = 0, userProfiles = false } = queries;
             const albums = await albumService.getAlbums({
                 ...omitPropsFromObject(queries, ["limit", "offset"]),
                 options: {
