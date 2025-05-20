@@ -167,5 +167,21 @@ export const songController = {
         } catch (err) {
             next(err);
         }
+    },
+    getLikeStatus: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const user = req.user!;
+            const songId = req.params.id;
+            const likeStatus = await songService.getLikeStatus(user.id, songId);
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Get song like status successfully",
+                data: {
+                    likeStatus
+                }
+            });
+        } catch (err) {
+            next(err);
+        }
     }
 };

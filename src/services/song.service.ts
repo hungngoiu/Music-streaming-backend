@@ -33,6 +33,8 @@ interface SongServiceInterface {
     likeSong: (userId: string, songId: string) => Promise<void>;
 
     unlikeSong: (userId: string, songId: string) => Promise<void>;
+
+    getLikeStatus: (userId: string, songId: string) => Promise<boolean>;
 }
 
 export const songService: SongServiceInterface = {
@@ -200,5 +202,13 @@ export const songService: SongServiceInterface = {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }
         await likeRepo.unlikeSong(userId, songId);
+    },
+
+    getLikeStatus: async (userId: string, songId: string) => {
+        const song = await songRepo.getOneByFilter({ id: songId });
+        if (!song) {
+            throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
+        }
+        return !!(await likeRepo.getOneByFilter({ songId, userId }));
     }
 };
