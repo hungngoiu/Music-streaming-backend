@@ -67,6 +67,12 @@ router.get(
 );
 
 router.get(
+    songRouteConfig.likeStatus,
+    verifyTokenMiddleware({ type: "at" }),
+    songController.getLikeStatus
+);
+
+router.get(
     songRouteConfig.streamSong,
     verifyTokenMiddleware({ type: "at" }),
     isVerifiedUserMiddleware,
