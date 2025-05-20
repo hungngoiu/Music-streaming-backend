@@ -219,5 +219,59 @@ export const songRouteDoc: OpenAPIV3.PathsObject = {
                 },
                 tags: ["songs"]
             }
+        },
+    [`${songRouteConfig.index}${convertToOpenApiRoute(songRouteConfig.likeSong)}`]:
+        {
+            post: {
+                security: [
+                    {
+                        bearerAuth: []
+                    }
+                ],
+                parameters: [
+                    {
+                        in: "path",
+                        name: "id",
+                        description: "Id of the song",
+                        schema: {
+                            type: "string"
+                        },
+                        required: true
+                    }
+                ],
+                responses: {
+                    "200": {
+                        description: "Like song successfully"
+                    }
+                },
+                tags: ["songs"]
+            }
+        },
+    [`${songRouteConfig.index}${convertToOpenApiRoute(songRouteConfig.unlikeSong)}`]:
+        {
+            post: {
+                security: [
+                    {
+                        bearerAuth: []
+                    }
+                ],
+                parameters: [
+                    {
+                        in: "path",
+                        name: "id",
+                        description: "Id of the song",
+                        schema: {
+                            type: "string"
+                        },
+                        required: true
+                    }
+                ],
+                responses: {
+                    "200": {
+                        description: "Unlike song successfully"
+                    }
+                },
+                tags: ["songs"]
+            }
         }
 };
