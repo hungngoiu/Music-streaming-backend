@@ -1,4 +1,4 @@
-import { CustomError } from "@/errors/index.js";
+import { AuthenticationError, CustomError } from "@/errors/index.js";
 import {
     CreateSongDto,
     GetSongDto,
@@ -8,7 +8,7 @@ import {
 import { StatusCodes } from "http-status-codes";
 import { storageService } from "./storage.service.js";
 import { musicsBucketConfigs } from "@/configs/storage.config.js";
-import { songRepo, userRepo } from "@/repositories/index.js";
+import { songRepo } from "@/repositories/index.js";
 import sharp from "sharp";
 import { envConfig } from "@/configs/env.config.js";
 import { songModelToDto } from "@/utils/modelToDto.js";
@@ -16,6 +16,7 @@ import stableStringify from "json-stable-stringify";
 import { cacheOrFetch } from "@/utils/caching.js";
 import { namespaces } from "@/configs/redis.config.js";
 import { redisService } from "./index.js";
+import { Prisma } from "@prisma/client";
 interface SongServiceInterface {
     createSong: (
         data: CreateSongDto,
@@ -37,11 +38,6 @@ export const songService: SongServiceInterface = {
         audioFile: Express.Multer.File,
         coverImg: Express.Multer.File
     ): Promise<SongDto> => {
-        const user = userRepo.getOneByFilter({ id: userId });
-        if (!user) {
-            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
-        }
-
         //Format the image before uploading
         const coverImgBuffer = await sharp(coverImg.buffer)
             .resize(1024, 1024, {
@@ -84,6 +80,15 @@ export const songService: SongServiceInterface = {
                 musicsBucketConfigs.name,
                 filePaths
             );
+            if (
+                err instanceof Prisma.PrismaClientKnownRequestError &&
+                err.code == "P2003"
+            ) {
+                throw new AuthenticationError(
+                    "User not found",
+                    StatusCodes.NOT_FOUND
+                );
+            }
             throw err;
         }
     },
@@ -98,14 +103,8 @@ export const songService: SongServiceInterface = {
                 songRepo.getOneByFilter(
                     { id },
                     {
-                        omit: {
-                            albumOrder: true
-                        },
                         include: {
                             user: {
-                                omit: {
-                                    password: true
-                                },
                                 include: {
                                     ...options
                                 }
@@ -139,14 +138,8 @@ export const songService: SongServiceInterface = {
             {
                 take: limit,
                 skip: offset,
-                omit: {
-                    albumOrder: true
-                },
                 include: {
                     user: {
-                        omit: {
-                            password: true
-                        },
                         include: {
                             userProfile: options?.userProfiles
                         }

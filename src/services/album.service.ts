@@ -1,4 +1,8 @@
-import { AuthorizationError, CustomError } from "@/errors/index.js";
+import {
+    AuthenticationError,
+    AuthorizationError,
+    CustomError
+} from "@/errors/index.js";
 import { albumRepo, songRepo } from "@/repositories/index.js";
 import {
     AlbumDto,
@@ -56,11 +60,6 @@ export const albumService: AlbumServiceInterface = {
         userId: string,
         coverImg: Express.Multer.File
     ): Promise<AlbumDto> => {
-        const user = albumRepo.getOneByFilter({ id: userId });
-        if (!user) {
-            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
-        }
-
         const coverImgBuffer = await sharp(coverImg.buffer)
             .resize(1400, 1400, {
                 fit: "contain"
@@ -85,6 +84,15 @@ export const albumService: AlbumServiceInterface = {
                 musicsBucketConfigs.name,
                 coverImagePath
             );
+            if (
+                err instanceof Prisma.PrismaClientKnownRequestError &&
+                err.code == "P2003"
+            ) {
+                throw new AuthenticationError(
+                    "User not found",
+                    StatusCodes.NOT_FOUND
+                );
+            }
             throw err;
         }
     },
@@ -187,7 +195,11 @@ export const albumService: AlbumServiceInterface = {
             { id: albumId },
             {
                 include: {
-                    songs: true
+                    songs: {
+                        orderBy: {
+                            albumOrder: "asc"
+                        }
+                    }
                 }
             }
         )) as Prisma.AlbumGetPayload<{
@@ -213,14 +225,12 @@ export const albumService: AlbumServiceInterface = {
                     "The song is already existed in the album",
                     StatusCodes.CONFLICT
                 );
-            }
-            else {
+            } else {
                 throw new CustomError(
                     "The song is assigned to another album",
                     StatusCodes.CONFLICT
                 );
             }
-
         }
 
         const result = await albumRepo.addSong(album, songId, index);
@@ -251,7 +261,15 @@ export const albumService: AlbumServiceInterface = {
     addSongs: async (albumId: string, songIds: string[], userId: string) => {
         const album = (await albumRepo.getOneByFilter(
             { id: albumId },
-            { include: { songs: true } }
+            {
+                include: {
+                    songs: {
+                        orderBy: {
+                            albumOrder: "asc"
+                        }
+                    }
+                }
+            }
         )) as Prisma.AlbumGetPayload<{
             include: { songs: true };
         }> | null;
@@ -349,27 +367,21 @@ export const albumService: AlbumServiceInterface = {
             () =>
                 albumRepo.getOneByFilter(
                     {
-                        id,
+                        id
                     },
                     {
                         include: {
                             user: {
-                                omit: {
-                                    password: true
-                                },
                                 include: {
                                     userProfile: options.userProfile
                                 }
                             },
                             songs: options.songs
                                 ? {
-                                    orderBy: {
-                                        albumOrder: "asc"
-                                    },
-                                    omit: {
-                                        albumOrder: true
-                                    }
-                                }
+                                      orderBy: {
+                                          albumOrder: "asc"
+                                      }
+                                  }
                                 : false
                         }
                     }
@@ -406,9 +418,6 @@ export const albumService: AlbumServiceInterface = {
                 skip: offset,
                 include: {
                     user: {
-                        omit: {
-                            password: true
-                        },
                         include: {
                             userProfile: options.userProfiles
                         }
@@ -429,10 +438,11 @@ export const albumService: AlbumServiceInterface = {
 
     publicAlbum: async (albumId: string, userId: string): Promise<void> => {
         const cacheKey = `${albumId}:${stableStringify({})}`;
-        const { data: album } = await cacheOrFetch(namespaces.Album, cacheKey, () => albumRepo.getOneByFilter({ id: albumId }));
-        if (!album) {
-            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
-        }
+        const { data: album } = await cacheOrFetch(
+            namespaces.Album,
+            cacheKey,
+            () => albumRepo.getOneByFilter({ id: albumId })
+        );
         if (!album) {
             throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
         }

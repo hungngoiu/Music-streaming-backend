@@ -121,9 +121,7 @@ export const albumRepo = {
         index?: number
     ) => {
         return await prismaClient.$transaction(async (tx) => {
-            const songs = album.songs.sort(
-                (a, b) => a.albumOrder! - b.albumOrder!
-            );
+            const songs = album.songs;
             if (songs.length == 0) {
                 const song = await tx.song.update({
                     where: {
@@ -256,7 +254,7 @@ export const albumRepo = {
         }>,
         songIds: string[]
     ) => {
-        const songs = album.songs.sort((a, b) => a.albumOrder! - b.albumOrder!);
+        const songs = album.songs;
         let startIndex = 0;
         if (songs.length != 0) {
             startIndex = songs[songs.length - 1].albumOrder! + 10;
