@@ -8,6 +8,8 @@ import {
 import { omitPropsFromObject } from "@/utils/object.js";
 import { StatusCodes } from "http-status-codes";
 import logger from "@/utils/logger.js";
+import { Prisma } from "@prisma/client";
+
 export const errorMiddleware = (
     err: Error,
     req: Request,
@@ -27,7 +29,7 @@ export const errorMiddleware = (
         });
         return;
     }
-    //authentication error
+    // authentication error
     if (err instanceof AuthenticationError) {
         logger.info("Authentication error: " + err.message);
         res.status(err.statusCode).json({
@@ -50,15 +52,63 @@ export const errorMiddleware = (
         });
         return;
     }
-    // unexpected error
-    else {
-        logger.error(err.message);
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+    // Prisma client known error
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        logger.error("Prisma known error: " + err.message);
+        const statusCode =
+            err.code === "P2002" // unique constraint failed
+                ? StatusCodes.CONFLICT
+                : err.code === "P2025" // record not found
+                  ? StatusCodes.NOT_FOUND
+                  : StatusCodes.BAD_REQUEST;
+
+        res.status(statusCode).json({
             status: "failed",
             error: {
+                type: "DatabaseError",
+                code: err.code,
                 message: err.message
             }
         });
         return;
     }
+
+    // Prisma client validation error
+    if (err instanceof Prisma.PrismaClientValidationError) {
+        logger.error("Prisma validation error: " + err.message);
+        res.status(StatusCodes.BAD_REQUEST).json({
+            status: "failed",
+            error: {
+                type: "DatabaseValidationError",
+                message: err.message
+            }
+        });
+        return;
+    }
+
+    // Prisma initialization or connection error
+    if (
+        err instanceof Prisma.PrismaClientInitializationError ||
+        err instanceof Prisma.PrismaClientRustPanicError
+    ) {
+        logger.error("Critical Prisma error: " + err.message);
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            status: "failed",
+            error: {
+                type: "CriticalDatabaseError",
+                message:
+                    "A critical database error occurred. Please try again later."
+            }
+        });
+        return;
+    }
+
+    // fallback for unexpected errors
+    logger.error(err.message);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        status: "failed",
+        error: {
+            message: err.message
+        }
+    });
 };
