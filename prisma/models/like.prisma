@@ -1,0 +1,12 @@
+model Like {
+    userId    String
+    songId    String
+    createdAt DateTime @default(now())
+
+    user User @relation(fields: [userId], references: [id])
+    song Song @relation(fields: [songId], references: [id])
+
+    @@id([userId, songId])
+    @@unique([userId, songId])
+    @@map("likes")
+}

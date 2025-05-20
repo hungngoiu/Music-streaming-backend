@@ -8,7 +8,7 @@ import {
 import { StatusCodes } from "http-status-codes";
 import { storageService } from "./storage.service.js";
 import { musicsBucketConfigs } from "@/configs/storage.config.js";
-import { songRepo } from "@/repositories/index.js";
+import { likeRepo, songRepo, userRepo } from "@/repositories/index.js";
 import sharp from "sharp";
 import { envConfig } from "@/configs/env.config.js";
 import { songModelToDto } from "@/utils/modelToDto.js";
@@ -29,6 +29,10 @@ interface SongServiceInterface {
     getSongs: (args: GetSongsDto) => Promise<SongDto[]>;
 
     getSongSignedAudioUrl: (id: string) => Promise<string | null>;
+
+    likeSong: (userId: string, songId: string) => Promise<void>;
+
+    unlikeSong: (userId: string, songId: string) => Promise<void>;
 }
 
 export const songService: SongServiceInterface = {
@@ -172,5 +176,29 @@ export const songService: SongServiceInterface = {
                 )
         );
         return audioUrl;
+    },
+
+    likeSong: async (userId: string, songId: string) => {
+        const user = userRepo.getOneByFilter({ id: userId });
+        if (!user) {
+            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
+        }
+        const song = await songRepo.getOneByFilter({ id: songId });
+        if (!song) {
+            throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
+        }
+        await likeRepo.likeSong(userId, songId);
+    },
+
+    unlikeSong: async (userId: string, songId: string) => {
+        const user = userRepo.getOneByFilter({ id: userId });
+        if (!user) {
+            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
+        }
+        const song = await songRepo.getOneByFilter({ id: songId });
+        if (!song) {
+            throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
+        }
+        await likeRepo.unlikeSong(userId, songId);
     }
 };

@@ -42,6 +42,18 @@ router.post(
     songController.uploadSong
 );
 
+router.post(
+    songRouteConfig.likeSong,
+    verifyTokenMiddleware({ type: "at" }),
+    songController.likeSong
+);
+
+router.post(
+    songRouteConfig.unlikeSong,
+    verifyTokenMiddleware({ type: "at" }),
+    songController.unlikeSong
+);
+
 router.get(
     songRouteConfig.getSongs,
     dataValidation(getSongsSchema, "query"),

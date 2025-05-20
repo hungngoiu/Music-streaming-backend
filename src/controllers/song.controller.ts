@@ -139,5 +139,33 @@ export const songController = {
         } catch (err) {
             next(err);
         }
+    },
+
+    likeSong: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const user = req.user!;
+            const songId = req.params.id;
+            await songService.likeSong(user.id, songId);
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Like song successfully"
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    unlikeSong: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const user = req.user!;
+            const songId = req.params.id;
+            await songService.unlikeSong(user.id, songId);
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Unlike song successfully"
+            });
+        } catch (err) {
+            next(err);
+        }
     }
 };
