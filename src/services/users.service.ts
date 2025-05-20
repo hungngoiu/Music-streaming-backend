@@ -11,6 +11,7 @@ import { namespaces } from "@/configs/redis.config.js";
 import { redisService } from "./redis.service.js";
 import { envConfig } from "@/configs/index.js";
 import stableStringify from "json-stable-stringify";
+import { Prisma } from "@prisma/client";
 
 interface UserServiceInterface {
     updateAvatar: (
@@ -84,26 +85,30 @@ export const userService: UserServiceInterface = {
     },
 
     updateProfile: async (userId: string, data: UpdateProfileDto) => {
-        const userProfile = await userRepo.getOneProfileByfilter({
-            userId: userId
-        });
-        if (!userProfile) {
-            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
-        }
-        const updatedUser = await userRepo.update(
-            { id: userId },
-            {
-                userProfile: {
-                    update: data
+        let updatedUser;
+        try {
+            updatedUser = await userRepo.update(
+                { id: userId },
+                {
+                    userProfile: {
+                        update: data
+                    }
+                },
+                {
+                    include: {
+                        userProfile: true
+                    }
                 }
-            },
-            {
-                include: {
-                    userProfile: true
-                }
+            );
+        } catch (err) {
+            if (
+                err instanceof Prisma.PrismaClientKnownRequestError &&
+                err.code === "P2025"
+            ) {
+                throw new CustomError("User not found", StatusCodes.NOT_FOUND);
             }
-        );
-
+            throw err;
+        }
         // Delete affected cache
         redisService
             .getSetMembers({
@@ -130,7 +135,7 @@ export const userService: UserServiceInterface = {
         const { data: user, cacheHit } = await cacheOrFetch(
             namespaces.User,
             cacheKey,
-            () => userRepo.getOneByFilter({ id: userId }, {include: options})
+            () => userRepo.getOneByFilter({ id: userId }, { include: options })
         );
         if (!cacheHit) {
             redisService.setAdd(
@@ -150,7 +155,7 @@ export const userService: UserServiceInterface = {
 
     getUsers: async (args: GetUsersDto): Promise<UserDto[]> => {
         const { options, name } = args;
-        const { limit, offset} = options;
+        const { limit, offset } = options;
         const users = await userRepo.searchUsers(
             { name },
             {
