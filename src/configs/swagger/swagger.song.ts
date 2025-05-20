@@ -277,6 +277,11 @@ export const songRouteDoc: OpenAPIV3.PathsObject = {
     [`${songRouteConfig.index}${convertToOpenApiRoute(songRouteConfig.likeStatus)}`]:
         {
             get: {
+                security: [
+                    {
+                        bearerAuth: []
+                    }
+                ],
                 parameters: [
                     {
                         in: "path",
