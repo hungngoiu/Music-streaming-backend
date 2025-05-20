@@ -213,14 +213,12 @@ export const albumService: AlbumServiceInterface = {
                     "The song is already existed in the album",
                     StatusCodes.CONFLICT
                 );
-            }
-            else {
+            } else {
                 throw new CustomError(
                     "The song is assigned to another album",
                     StatusCodes.CONFLICT
                 );
             }
-
         }
 
         const result = await albumRepo.addSong(album, songId, index);
@@ -349,7 +347,7 @@ export const albumService: AlbumServiceInterface = {
             () =>
                 albumRepo.getOneByFilter(
                     {
-                        id,
+                        id
                     },
                     {
                         include: {
@@ -363,13 +361,13 @@ export const albumService: AlbumServiceInterface = {
                             },
                             songs: options.songs
                                 ? {
-                                    orderBy: {
-                                        albumOrder: "asc"
-                                    },
-                                    omit: {
-                                        albumOrder: true
-                                    }
-                                }
+                                      orderBy: {
+                                          albumOrder: "asc"
+                                      },
+                                      omit: {
+                                          albumOrder: true
+                                      }
+                                  }
                                 : false
                         }
                     }
@@ -429,7 +427,11 @@ export const albumService: AlbumServiceInterface = {
 
     publicAlbum: async (albumId: string, userId: string): Promise<void> => {
         const cacheKey = `${albumId}:${stableStringify({})}`;
-        const { data: album } = await cacheOrFetch(namespaces.Album, cacheKey, () => albumRepo.getOneByFilter({ id: albumId }));
+        const { data: album } = await cacheOrFetch(
+            namespaces.Album,
+            cacheKey,
+            () => albumRepo.getOneByFilter({ id: albumId })
+        );
         if (!album) {
             throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
         }

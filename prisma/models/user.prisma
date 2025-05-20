@@ -15,6 +15,7 @@ model User {
     userProfile UserProfile?
     songs       Song[]
     albums      Album[]
+    likes       Like[]
 
     @@map("users")
 }

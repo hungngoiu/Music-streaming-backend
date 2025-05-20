@@ -130,7 +130,7 @@ export const userService: UserServiceInterface = {
         const { data: user, cacheHit } = await cacheOrFetch(
             namespaces.User,
             cacheKey,
-            () => userRepo.getOneByFilter({ id: userId }, {include: options})
+            () => userRepo.getOneByFilter({ id: userId }, { include: options })
         );
         if (!cacheHit) {
             redisService.setAdd(
@@ -150,7 +150,7 @@ export const userService: UserServiceInterface = {
 
     getUsers: async (args: GetUsersDto): Promise<UserDto[]> => {
         const { options, name } = args;
-        const { limit, offset} = options;
+        const { limit, offset } = options;
         const users = await userRepo.searchUsers(
             { name },
             {
