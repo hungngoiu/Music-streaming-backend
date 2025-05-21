@@ -97,18 +97,14 @@ export const albumRepo = {
             });
             return {
                 ...album,
-                songs: (
-                    await Promise.allSettled(
-                        songIds.map((id, index) =>
-                            tx.song.update({
-                                where: { id },
-                                data: { albumOrder: (index + 1) * 10 }
-                            })
-                        )
+                songs: await Promise.all(
+                    songIds.map((id, index) =>
+                        tx.song.update({
+                            where: { id },
+                            data: { albumOrder: (index + 1) * 10 }
+                        })
                     )
                 )
-                    .filter((result) => result.status == "fulfilled")
-                    .map((result) => result.value)
             };
         });
     },
@@ -190,7 +186,7 @@ export const albumRepo = {
             if (end != songs.length - 1) {
                 const endOrder = songs[end].albumOrder!;
                 const step = (endOrder - startOrder) / (end - start);
-                await Promise.allSettled(
+                await Promise.all(
                     songs.map((song, index) =>
                         tx.song.update({
                             where: {
@@ -218,7 +214,7 @@ export const albumRepo = {
                 songs.splice(index, 0, song);
                 return { ...album, songs };
             }
-            await Promise.allSettled(
+            await Promise.all(
                 songs.map((song, index) =>
                     tx.song.update({
                         where: {
