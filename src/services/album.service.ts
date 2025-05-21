@@ -166,11 +166,8 @@ export const albumService: AlbumServiceInterface = {
         redisService
             .getSetMembers({
                 namespace: namespaces.Album,
-                key: album.id
+                key: `${album.id}:songs`
             })
-            .then((cacheKeys) =>
-                cacheKeys.filter((key) => key.includes(`"songs":true`))
-            )
             .then((affectedKeys) => {
                 if (affectedKeys.length != 0) {
                     redisService.delete({
@@ -239,11 +236,8 @@ export const albumService: AlbumServiceInterface = {
         redisService
             .getSetMembers({
                 namespace: namespaces.Album,
-                key: album.id
+                key: `${album.id}:songs`
             })
-            .then((cacheKeys) =>
-                cacheKeys.filter((key) => key.includes(`"songs":true`))
-            )
             .then((affectedKeys) => {
                 if (affectedKeys.length != 0) {
                     redisService.delete({
@@ -335,15 +329,11 @@ export const albumService: AlbumServiceInterface = {
 
         const result = await albumRepo.addSongs(album, unassignedSongIds);
 
-        // Delete affected cache
         redisService
             .getSetMembers({
                 namespace: namespaces.Album,
-                key: album.id
+                key: `${album.id}:songs`
             })
-            .then((cacheKeys) =>
-                cacheKeys.filter((key) => key.includes(`"songs":true`))
-            )
             .then((affectedKeys) => {
                 if (affectedKeys.length != 0) {
                     redisService.delete({
@@ -360,7 +350,23 @@ export const albumService: AlbumServiceInterface = {
 
     getAlbum: async (args: GetAlbumDto): Promise<AlbumDto> => {
         const { id, options, userId } = args;
-        const cacheKey = `${id}:${stableStringify(options)}`;
+        const prismaOptions = {
+            include: {
+                user: {
+                    include: {
+                        userProfile: options.userProfile
+                    }
+                },
+                songs: options.songs
+                    ? {
+                          orderBy: {
+                              albumOrder: Prisma.SortOrder.asc
+                          }
+                      }
+                    : false
+            }
+        };
+        const cacheKey = `${id}:${stableStringify(prismaOptions)}`;
         const { data: album, cacheHit } = await cacheOrFetch(
             namespaces.Album,
             cacheKey,
@@ -369,22 +375,7 @@ export const albumService: AlbumServiceInterface = {
                     {
                         id
                     },
-                    {
-                        include: {
-                            user: {
-                                include: {
-                                    userProfile: options.userProfile
-                                }
-                            },
-                            songs: options.songs
-                                ? {
-                                      orderBy: {
-                                          albumOrder: "asc"
-                                      }
-                                  }
-                                : false
-                        }
-                    }
+                    prismaOptions
                 )
         );
 
@@ -393,10 +384,30 @@ export const albumService: AlbumServiceInterface = {
                 {
                     namespace: namespaces.Album,
                     key: id,
-                    members: [stableStringify(options)!]
+                    members: [stableStringify(prismaOptions)!]
                 },
                 { EX: envConfig.REDIS_CACHING_EXP }
             );
+            if (options.songs) {
+                redisService.setAdd(
+                    {
+                        namespace: namespaces.Album,
+                        key: `${id}:songs`,
+                        members: [stableStringify(prismaOptions)!]
+                    },
+                    { EX: envConfig.REDIS_CACHING_EXP }
+                );
+            }
+            if (options.userProfile) {
+                redisService.setAdd(
+                    {
+                        namespace: namespaces.Album,
+                        key: `${id}:userProfile`,
+                        members: [stableStringify(prismaOptions)!]
+                    },
+                    { EX: envConfig.REDIS_CACHING_EXP }
+                );
+            }
         }
 
         if (!album) {

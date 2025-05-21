@@ -101,33 +101,40 @@ export const songService: SongServiceInterface = {
 
     getSong: async (args: GetSongDto): Promise<SongDto> => {
         const { id, options } = args;
-        const cacheKey = `${id}:${stableStringify(options)}`;
+        const prismaOptions = {
+            include: {
+                user: {
+                    include: {
+                        ...options
+                    }
+                }
+            }
+        };
+        const cacheKey = `${id}:${stableStringify(prismaOptions)}`;
         const { data: song, cacheHit } = await cacheOrFetch(
             namespaces.Song,
             cacheKey,
-            () =>
-                songRepo.getOneByFilter(
-                    { id },
-                    {
-                        include: {
-                            user: {
-                                include: {
-                                    ...options
-                                }
-                            }
-                        }
-                    }
-                )
+            () => songRepo.getOneByFilter({ id }, prismaOptions)
         );
         if (!cacheHit) {
             redisService.setAdd(
                 {
                     namespace: namespaces.Song,
                     key: id,
-                    members: [stableStringify(options)!]
+                    members: [stableStringify(prismaOptions)!]
                 },
                 { EX: envConfig.REDIS_CACHING_EXP }
             );
+            if (options.userProfile) {
+                redisService.setAdd(
+                    {
+                        namespace: namespaces.Song,
+                        key: `${id}:userProfile`,
+                        members: [stableStringify(prismaOptions)!]
+                    },
+                    { EX: envConfig.REDIS_CACHING_EXP }
+                );
+            }
         }
         if (!song) {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);

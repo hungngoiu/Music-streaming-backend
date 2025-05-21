@@ -71,9 +71,6 @@ export const userService: UserServiceInterface = {
                 namespace: namespaces.User,
                 key: userId
             })
-            .then((cacheKeys) =>
-                cacheKeys.filter((key) => key.includes(`"userProfile":true`))
-            )
             .then((affectedKeys) => {
                 if (affectedKeys.length != 0) {
                     redisService.delete({
@@ -115,9 +112,6 @@ export const userService: UserServiceInterface = {
                 namespace: namespaces.User,
                 key: userId
             })
-            .then((cacheKeys) =>
-                cacheKeys.filter((key) => key.includes(`"userProfile":true`))
-            )
             .then((affectedKeys) => {
                 if (affectedKeys.length != 0) {
                     redisService.delete({
@@ -130,19 +124,19 @@ export const userService: UserServiceInterface = {
     },
 
     getUser: async (userId: string) => {
-        const options = { userProfile: true };
-        const cacheKey = `${userId}:${stableStringify(options)}`;
+        const prismaOptions = { include: { userProfile: true } };
+        const cacheKey = `${userId}:${stableStringify(prismaOptions)}`;
         const { data: user, cacheHit } = await cacheOrFetch(
             namespaces.User,
             cacheKey,
-            () => userRepo.getOneByFilter({ id: userId }, { include: options })
+            () => userRepo.getOneByFilter({ id: userId }, prismaOptions)
         );
         if (!cacheHit) {
             redisService.setAdd(
                 {
                     namespace: namespaces.User,
                     key: userId,
-                    members: [stableStringify(options)!]
+                    members: [stableStringify(prismaOptions)!]
                 },
                 { EX: envConfig.REDIS_CACHING_EXP }
             );
