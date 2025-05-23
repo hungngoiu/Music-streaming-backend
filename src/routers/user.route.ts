@@ -49,4 +49,12 @@ router.get(
 
 router.get(userRouteConfig.getUser, userController.getUser);
 
+router.get(
+    userRouteConfig.getUserLikedSong,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    dataValidation(getUsersQuerySchema, "query"),
+    userController.getLikedSong
+);
+
 export default router;
