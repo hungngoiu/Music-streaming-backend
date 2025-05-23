@@ -8,7 +8,7 @@ import {
 import { StatusCodes } from "http-status-codes";
 import { storageService } from "./storage.service.js";
 import { musicsBucketConfigs } from "@/configs/storage.config.js";
-import { likeRepo, songRepo, userRepo } from "@/repositories/index.js";
+import { songLikeRepo, songRepo, userRepo } from "@/repositories/index.js";
 import sharp from "sharp";
 import { envConfig } from "@/configs/env.config.js";
 import { songModelToDto } from "@/utils/modelToDto.js";
@@ -92,7 +92,7 @@ export const songService: SongServiceInterface = {
             ) {
                 throw new AuthenticationError(
                     "User not found",
-                    StatusCodes.NOT_FOUND
+                    StatusCodes.UNAUTHORIZED
                 );
             }
             throw err;
@@ -190,18 +190,21 @@ export const songService: SongServiceInterface = {
     likeSong: async (userId: string, songId: string) => {
         const user = userRepo.getOneByFilter({ id: userId });
         if (!user) {
-            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
+            throw new AuthenticationError(
+                "User not found",
+                StatusCodes.UNAUTHORIZED
+            );
         }
         const song = await songRepo.getOneByFilter({ id: songId });
         if (!song) {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }
-        await likeRepo.likeSong(userId, songId);
+        await songLikeRepo.likeSong(userId, songId);
 
         redisService
             .getSetMembers({
                 namespace: namespaces.Like,
-                key: `user:${userId}`
+                key: `songs:user:${userId}`
             })
             .then((affectedKeys) => {
                 if (affectedKeys.length != 0) {
@@ -220,18 +223,21 @@ export const songService: SongServiceInterface = {
     unlikeSong: async (userId: string, songId: string) => {
         const user = userRepo.getOneByFilter({ id: userId });
         if (!user) {
-            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
+            throw new AuthenticationError(
+                "User not found",
+                StatusCodes.UNAUTHORIZED
+            );
         }
         const song = await songRepo.getOneByFilter({ id: songId });
         if (!song) {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }
-        await likeRepo.unlikeSong(userId, songId);
+        await songLikeRepo.unlikeSong(userId, songId);
 
         redisService
             .getSetMembers({
                 namespace: namespaces.Like,
-                key: `user:${userId}`
+                key: `songs:user:${userId}`
             })
             .then((affectedKeys) => {
                 if (affectedKeys.length != 0) {
@@ -252,6 +258,6 @@ export const songService: SongServiceInterface = {
         if (!song) {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }
-        return !!(await likeRepo.getOneByFilter({ songId, userId }));
+        return !!(await songLikeRepo.getOneByFilter({ songId, userId }));
     }
 };

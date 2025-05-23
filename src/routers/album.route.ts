@@ -67,6 +67,24 @@ router.patch(
     albumController.publicAlbum
 );
 
+router.post(
+    albumRouteConfig.likeAlbum,
+    verifyTokenMiddleware({ type: "at" }),
+    albumController.likeAlbum
+);
+
+router.post(
+    albumRouteConfig.unlikeAlbum,
+    verifyTokenMiddleware({ type: "at" }),
+    albumController.unlikeAlbum
+);
+
+router.get(
+    albumRouteConfig.likeStatus,
+    verifyTokenMiddleware({ type: "at" }),
+    albumController.getLikeStatus
+);
+
 router.get(
     albumRouteConfig.getAlbums,
     verifyTokenMiddleware({ type: "at", required: false }),
