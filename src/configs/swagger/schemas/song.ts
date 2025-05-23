@@ -6,7 +6,8 @@ export const songExample = {
     lyric: "Test Lyrics",
     userId: "6f322c31-142c-454e-d216fj3eb934e",
     albumId: "c4ej6n1-1vc56c-12qs-d2t4858934e",
-    coverImageUrl: "imageUrl"
+    coverImageUrl: "imageUrl",
+    likesCount: 300
 };
 
 export const songSchema: OpenAPIV3.SchemaObject = {
@@ -29,6 +30,9 @@ export const songSchema: OpenAPIV3.SchemaObject = {
         coverImageUrl: {
             type: "string",
             format: "uri"
+        },
+        likesCount: {
+            type: "integer"
         }
     },
     example: songExample

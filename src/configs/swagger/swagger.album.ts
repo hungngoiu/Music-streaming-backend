@@ -377,5 +377,113 @@ export const albumRouteDoc: OpenAPIV3.PathsObject = {
             },
             tags: ["albums"]
         }
-    }
+    },
+    [`${albumRouteConfig.index}${convertToOpenApiRoute(albumRouteConfig.likeAlbum)}`]:
+        {
+            post: {
+                security: [
+                    {
+                        bearerAuth: []
+                    }
+                ],
+                parameters: [
+                    {
+                        in: "path",
+                        name: "id",
+                        description: "Id of the album",
+                        schema: {
+                            type: "string"
+                        },
+                        required: true
+                    }
+                ],
+                responses: {
+                    "200": {
+                        description: "Like album successfully"
+                    }
+                },
+                tags: ["albums"]
+            }
+        },
+    [`${albumRouteConfig.index}${convertToOpenApiRoute(albumRouteConfig.unlikeAlbum)}`]:
+        {
+            post: {
+                security: [
+                    {
+                        bearerAuth: []
+                    }
+                ],
+                parameters: [
+                    {
+                        in: "path",
+                        name: "id",
+                        description: "Id of the album",
+                        schema: {
+                            type: "string"
+                        },
+                        required: true
+                    }
+                ],
+                responses: {
+                    "200": {
+                        description: "Unlike album successfully"
+                    }
+                },
+                tags: ["albums"]
+            }
+        },
+    [`${albumRouteConfig.index}${convertToOpenApiRoute(albumRouteConfig.likeStatus)}`]:
+        {
+            get: {
+                security: [
+                    {
+                        bearerAuth: []
+                    }
+                ],
+                parameters: [
+                    {
+                        in: "path",
+                        name: "id",
+                        description: "Id of the album",
+                        schema: {
+                            type: "string"
+                        },
+                        required: true
+                    }
+                ],
+                responses: {
+                    "200": {
+                        description: "Get album like status successfully",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    properties: {
+                                        status: {
+                                            type: "string",
+                                            example: "success"
+                                        },
+                                        message: {
+                                            type: "string",
+                                            example:
+                                                "Get song like status successfully"
+                                        },
+                                        data: {
+                                            type: "object",
+                                            properties: {
+                                                likeStatus: {
+                                                    type: "boolean",
+                                                    example: true
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                tags: ["albums"]
+            }
+        }
 };
