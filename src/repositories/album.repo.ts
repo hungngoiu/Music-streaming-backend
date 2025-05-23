@@ -2,6 +2,7 @@ import { Album, Prisma } from "@prisma/client";
 import prismaClient from "@/databases/prisma.js";
 import { searchAlbums, searchAlbumsWithUserId } from "@prisma/client/sql";
 import { omitPropsFromObject } from "@/utils/object.js";
+import logger from "@/utils/logger.js";
 
 export const albumRepo = {
     create: (
@@ -101,13 +102,50 @@ export const albumRepo = {
                     songIds.map((id, index) =>
                         tx.song.update({
                             where: { id },
-                            data: { albumOrder: (index + 1) * 10 }
+                            data: { albumOrder: index }
                         })
                     )
                 )
             };
         });
     },
+
+    // connectSongs: async (albumId: string, songIds: string[]) => {
+    //     return await prismaClient.$transaction(async (tx) => {
+    //         const album = await tx.album.update({
+    //             where: {
+    //                 id: albumId
+    //             },
+    //             data: {
+    //                 songs: {
+    //                     updateMany: {
+    //                         where: {},
+    //                         data: {
+    //                             albumOrder: null
+    //                         }
+    //                     },
+    //                     set: songIds.map((id) => {
+    //                         return { id: id };
+    //                     })
+    //                 }
+    //             },
+    //             include: {
+    //                 songs: true
+    //             }
+    //         });
+    //         return {
+    //             ...album,
+    //             songs: await Promise.all(
+    //                 songIds.map((id, index) =>
+    //                     tx.song.update({
+    //                         where: { id },
+    //                         data: { albumOrder: (index + 1) * 10 }
+    //                     })
+    //                 )
+    //             )
+    //         };
+    //     });
+    // },
 
     addSong: async (
         album: Prisma.AlbumGetPayload<{
@@ -118,131 +156,191 @@ export const albumRepo = {
     ) => {
         return await prismaClient.$transaction(async (tx) => {
             const songs = album.songs;
-            if (songs.length == 0) {
+
+            if (songs.length === 0) {
                 const song = await tx.song.update({
-                    where: {
-                        id: songId
-                    },
+                    where: { id: songId },
                     data: {
-                        albumOrder: 10,
-                        album: {
-                            connect: {
-                                id: album.id
-                            }
-                        }
+                        albumOrder: 0,
+                        album: { connect: { id: album.id } }
                     }
                 });
                 return { ...album, songs: [song] };
             }
-            if (index == undefined || index >= songs.length) {
+
+            if (index === undefined || index >= songs.length) {
                 const song = await tx.song.update({
-                    where: {
-                        id: songId
-                    },
+                    where: { id: songId },
                     data: {
-                        albumOrder: songs[songs.length - 1].albumOrder! + 10,
-                        album: {
-                            connect: {
-                                id: album.id
-                            }
-                        }
+                        albumOrder: songs[songs.length - 1].albumOrder! + 1,
+                        album: { connect: { id: album.id } }
                     }
                 });
                 return { ...album, songs: [...songs, song] };
             }
-            const prev = index > 0 ? songs[index - 1].albumOrder! : -1;
-            const next = songs[index].albumOrder!;
 
-            // check if there is space for insert
-            if (next - prev > 1) {
-                const song = await tx.song.update({
-                    where: {
-                        id: songId
-                    },
+            for (let i = songs.length - 1; i >= index; i--) {
+                await tx.song.update({
+                    where: { id: songs[i].id },
                     data: {
-                        albumOrder: (prev + next) / 2,
-                        album: {
-                            connect: {
-                                id: album.id
-                            }
-                        }
+                        albumOrder: songs[i].albumOrder! + 1
                     }
                 });
-                songs.splice(index, 0, song);
-                return { ...album, songs: songs };
             }
-            // repopulate the sparse list
-            let start = index - 5 >= 0 ? index - 5 : 0;
-            let end = index + 5 < songs.length ? index + 5 : songs.length - 1;
-            while (
-                songs[end].albumOrder! - songs[start].albumOrder! <
-                    10 * (end - start + 1) &&
-                (start != 0 || end != songs.length - 1)
-            ) {
-                start = start - 5 >= 0 ? start - 5 : 0;
-                end = end + 5 < songs.length ? end + 5 : songs.length - 1;
-            }
-            const startOrder = start != 0 ? songs[start].albumOrder! : 10;
-            if (end != songs.length - 1) {
-                const endOrder = songs[end].albumOrder!;
-                const step = (endOrder - startOrder) / (end - start);
-                await Promise.all(
-                    songs.map((song, index) =>
-                        tx.song.update({
-                            where: {
-                                id: song.id
-                            },
-                            data: {
-                                albumOrder: startOrder + index * step
-                            }
-                        })
-                    )
-                );
-                const song = await tx.song.update({
-                    where: {
-                        id: songId
-                    },
-                    data: {
-                        albumOrder: startOrder + index * step - step / 2,
-                        album: {
-                            connect: {
-                                id: album.id
-                            }
-                        }
-                    }
-                });
-                songs.splice(index, 0, song);
-                return { ...album, songs };
-            }
-            await Promise.all(
-                songs.map((song, index) =>
-                    tx.song.update({
-                        where: {
-                            id: song.id
-                        },
-                        data: {
-                            albumOrder: startOrder + index * 10
-                        }
-                    })
-                )
-            );
-            const song = await tx.song.update({
-                where: {
-                    id: songId
-                },
+
+            const insertedSong = await tx.song.update({
+                where: { id: songId },
                 data: {
-                    albumOrder: startOrder + index * 10 - 10 / 2,
-                    album: {
-                        connect: {
-                            id: album.id
-                        }
-                    }
+                    albumOrder: index,
+                    album: { connect: { id: album.id } }
                 }
             });
-            songs.splice(index, 0, song);
-            return { ...album, songs: songs };
+
+            return {
+                ...album,
+                songs: [
+                    ...songs.slice(0, index),
+                    insertedSong,
+                    ...songs.slice(index)
+                ]
+            };
         });
     },
+
+    // addSong: async (
+    //     album: Prisma.AlbumGetPayload<{
+    //         include: { songs: true };
+    //     }>,
+    //     songId: string,
+    //     index?: number
+    // ) => {
+    //     return await prismaClient.$transaction(async (tx) => {
+    //         const songs = album.songs;
+    //         if (songs.length == 0) {
+    //             const song = await tx.song.update({
+    //                 where: {
+    //                     id: songId
+    //                 },
+    //                 data: {
+    //                     albumOrder: 10,
+    //                     album: {
+    //                         connect: {
+    //                             id: album.id
+    //                         }
+    //                     }
+    //                 }
+    //             });
+    //             return { ...album, songs: [song] };
+    //         }
+    //         if (index == undefined || index >= songs.length) {
+    //             const song = await tx.song.update({
+    //                 where: {
+    //                     id: songId
+    //                 },
+    //                 data: {
+    //                     albumOrder: songs[songs.length - 1].albumOrder! + 10,
+    //                     album: {
+    //                         connect: {
+    //                             id: album.id
+    //                         }
+    //                     }
+    //                 }
+    //             });
+    //             return { ...album, songs: [...songs, song] };
+    //         }
+    //         const prev = index > 0 ? songs[index - 1].albumOrder! : -1;
+    //         const next = songs[index].albumOrder!;
+
+    //         // check if there is space for insert
+    //         if (next - prev > 1) {
+    //             const song = await tx.song.update({
+    //                 where: {
+    //                     id: songId
+    //                 },
+    //                 data: {
+    //                     albumOrder: (prev + next) / 2,
+    //                     album: {
+    //                         connect: {
+    //                             id: album.id
+    //                         }
+    //                     }
+    //                 }
+    //             });
+    //             songs.splice(index, 0, song);
+    //             return { ...album, songs: songs };
+    //         }
+    //         // repopulate the sparse list
+    //         let start = index - 5 >= 0 ? index - 5 : 0;
+    //         let end = index + 5 < songs.length ? index + 5 : songs.length - 1;
+    //         while (
+    //             songs[end].albumOrder! - songs[start].albumOrder! <
+    //                 10 * (end - start + 1) &&
+    //             (start != 0 || end != songs.length - 1)
+    //         ) {
+    //             start = start - 5 >= 0 ? start - 5 : 0;
+    //             end = end + 5 < songs.length ? end + 5 : songs.length - 1;
+    //         }
+    //         const startOrder = start != 0 ? songs[start].albumOrder! : 10;
+    //         if (end != songs.length - 1) {
+    //             const endOrder = songs[end].albumOrder!;
+    //             const step = (endOrder - startOrder) / (end - start);
+    //             await Promise.all(
+    //                 songs.map((song, index) =>
+    //                     tx.song.update({
+    //                         where: {
+    //                             id: song.id
+    //                         },
+    //                         data: {
+    //                             albumOrder: startOrder + index * step
+    //                         }
+    //                     })
+    //                 )
+    //             );
+    //             const song = await tx.song.update({
+    //                 where: {
+    //                     id: songId
+    //                 },
+    //                 data: {
+    //                     albumOrder: startOrder + index * step - step / 2,
+    //                     album: {
+    //                         connect: {
+    //                             id: album.id
+    //                         }
+    //                     }
+    //                 }
+    //             });
+    //             songs.splice(index, 0, song);
+    //             return { ...album, songs };
+    //         }
+    //         await Promise.all(
+    //             songs.map((song, index) =>
+    //                 tx.song.update({
+    //                     where: {
+    //                         id: song.id
+    //                     },
+    //                     data: {
+    //                         albumOrder: startOrder + index * 10
+    //                     }
+    //                 })
+    //             )
+    //         );
+    //         const song = await tx.song.update({
+    //             where: {
+    //                 id: songId
+    //             },
+    //             data: {
+    //                 albumOrder: startOrder + index * 10 - 10 / 2,
+    //                 album: {
+    //                     connect: {
+    //                         id: album.id
+    //                     }
+    //                 }
+    //             }
+    //         });
+    //         songs.splice(index, 0, song);
+    //         return { ...album, songs: songs };
+    //     });
+    // },
 
     addSongs: async (
         album: Prisma.AlbumGetPayload<{
@@ -251,9 +349,10 @@ export const albumRepo = {
         songIds: string[]
     ) => {
         const songs = album.songs;
+        logger.debug(songIds);
         let startIndex = 0;
         if (songs.length != 0) {
-            startIndex = songs[songs.length - 1].albumOrder! + 10;
+            startIndex = songs.length;
         }
         return {
             ...album,
@@ -264,7 +363,7 @@ export const albumRepo = {
                         prismaClient.song.update({
                             where: { id },
                             data: {
-                                albumOrder: startIndex + index * 10,
+                                albumOrder: startIndex + index,
                                 album: {
                                     connect: {
                                         id: album.id
@@ -277,4 +376,38 @@ export const albumRepo = {
             ]
         };
     }
+
+    // addSongs: async (
+    //     album: Prisma.AlbumGetPayload<{
+    //         include: { songs: true };
+    //     }>,
+    //     songIds: string[]
+    // ) => {
+    //     const songs = album.songs;
+    //     let startIndex = 0;
+    //     if (songs.length != 0) {
+    //         startIndex = songs[songs.length - 1].albumOrder! + 10;
+    //     }
+    //     return {
+    //         ...album,
+    //         songs: [
+    //             ...songs,
+    //             ...(await prismaClient.$transaction(
+    //                 songIds.map((id, index) =>
+    //                     prismaClient.song.update({
+    //                         where: { id },
+    //                         data: {
+    //                             albumOrder: startIndex + index * 10,
+    //                             album: {
+    //                                 connect: {
+    //                                     id: album.id
+    //                                 }
+    //                             }
+    //                         }
+    //                     })
+    //                 )
+    //             ))
+    //         ]
+    //     };
+    // }
 };

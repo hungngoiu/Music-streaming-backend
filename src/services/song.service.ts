@@ -161,6 +161,9 @@ export const songService: SongServiceInterface = {
             }
         );
 
+        // Use allSettled here for filter out successfully fetch result,
+        // fail to fetch doesn't reject the promise.
+        // If use Promise.all will caused the promise reject for only 1 fail result
         return (
             await Promise.allSettled(songs.map((song) => songModelToDto(song)))
         )

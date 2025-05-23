@@ -66,7 +66,7 @@ export const storageService: StorageServiceInterface = {
             .upload(filePath, buffer, { contentType: mime });
         if (error) {
             logger.warn(
-                `Cannot upload ${filePath} in bucket ${bucket}. Error: ${error.message}`
+                `Cannot upload ${filePath} in bucket ${bucket}. Error: ${error}`
             );
             throw new CustomError(
                 error.message,
@@ -168,7 +168,9 @@ export const storageService: StorageServiceInterface = {
             .from(bucket)
             .createSignedUrl(filePath, duration);
         if (error) {
-            logger.warn(error.message + "\nfilePath: " + filePath);
+            logger.warn(
+                `Cannot generate url for ${filePath} in bucket ${bucket}. Error: ${error}`
+            );
         }
         return data ? data.signedUrl : null;
     }
