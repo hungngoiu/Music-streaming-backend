@@ -305,6 +305,7 @@ export const albumService: AlbumServiceInterface = {
                 }
             }
         );
+
         const notFoundSongIds = songIds.filter(
             (id) => !songs.map((song) => song.id).includes(id)
         );
@@ -334,9 +335,12 @@ export const albumService: AlbumServiceInterface = {
             );
         }
         // songs that already in the album are ignored
-        const unassignedSongIds = songs
-            .filter((song) => !song.albumId)
-            .map((song) => song.id);
+        const unassignedSongIdSet = new Set(
+            songs.filter((song) => !song.albumId).map((song) => song.id)
+        );
+        const unassignedSongIds = songIds.filter((id) =>
+            unassignedSongIdSet.has(id)
+        );
 
         const result = await albumRepo.addSongs(album, unassignedSongIds);
 
@@ -449,6 +453,9 @@ export const albumService: AlbumServiceInterface = {
             loginUserId
         );
 
+        // Use allSettled here for filter out successfully fetch result,
+        // fail to fetch doesn't reject the promise.
+        // If use Promise.all will caused the promise reject for only 1 fail result
         return (
             await Promise.allSettled(
                 albums.map((album) => albumModelToDto(album))

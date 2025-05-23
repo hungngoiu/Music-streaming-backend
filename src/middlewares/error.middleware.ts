@@ -18,7 +18,7 @@ export const errorMiddleware = (
 ) => {
     // validation error
     if (err instanceof ValidationError) {
-        logger.info("Validation error: " + err.message);
+        logger.warn("Validation error: " + err.message);
         res.status(err.statusCode).json({
             status: "failed",
             error: {
@@ -31,7 +31,7 @@ export const errorMiddleware = (
     }
     // authentication error
     if (err instanceof AuthenticationError) {
-        logger.info("Authentication error: " + err.message);
+        logger.warn("Authentication error: " + err.message);
         res.status(err.statusCode).json({
             status: "failed",
             error: {
@@ -54,7 +54,7 @@ export const errorMiddleware = (
     }
     // Prisma client known error
     if (err instanceof Prisma.PrismaClientKnownRequestError) {
-        logger.error("Prisma known error: " + err.message);
+        logger.warn("Prisma known error: " + err.message);
         const statusCode =
             err.code === "P2002" // unique constraint failed
                 ? StatusCodes.CONFLICT
@@ -75,7 +75,7 @@ export const errorMiddleware = (
 
     // Prisma client validation error
     if (err instanceof Prisma.PrismaClientValidationError) {
-        logger.error("Prisma validation error: " + err.message);
+        logger.warn("Prisma validation error: " + err.message);
         res.status(StatusCodes.BAD_REQUEST).json({
             status: "failed",
             error: {
