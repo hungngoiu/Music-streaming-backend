@@ -6,6 +6,9 @@ interface albumRouteConfigProps extends defaultRoutesConfigProps {
     addSongs: string;
     setSongs: string;
     publicAlbum: string;
+    likeAlbum: string;
+    unlikeAlbum: string;
+    likeStatus: string;
     getAlbum: string;
     getAlbums: string;
 }
@@ -18,6 +21,9 @@ export const albumRouteConfig: albumRouteConfigProps = {
     addSongs: "/:albumId/songs/append",
     setSongs: "/:albumId/songs/set",
     publicAlbum: "/:id/public",
+    likeAlbum: "/:id/like",
+    unlikeAlbum: "/:id/unlike",
+    likeStatus: "/:id/like-status",
     getAlbum: "/:id",
     getAlbums: "/many"
 };

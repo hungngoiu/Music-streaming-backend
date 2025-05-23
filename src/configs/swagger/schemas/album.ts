@@ -5,7 +5,8 @@ export const albumExample = {
     name: "Test name",
     isPublic: false,
     userId: "6f322c31-142c-454e-d216fj3eb934e",
-    coverImageUrl: "imageUrl"
+    coverImageUrl: "imageUrl",
+    likesCount: 300
 };
 
 export const albumSchema: OpenAPIV3.SchemaObject = {
@@ -28,6 +29,9 @@ export const albumSchema: OpenAPIV3.SchemaObject = {
         coverImageUrl: {
             type: "string",
             format: "uri"
+        },
+        likesCount: {
+            type: "integer"
         }
     },
     example: albumExample

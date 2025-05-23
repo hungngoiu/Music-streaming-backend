@@ -1,17 +1,23 @@
-import { CustomError } from "@/errors/index.js";
-import { likeRepo, userRepo } from "@/repositories/index.js";
+import { AuthenticationError, CustomError } from "@/errors/index.js";
+import { albumLikeRepo, songLikeRepo, userRepo } from "@/repositories/index.js";
 import { StatusCodes } from "http-status-codes";
 import sharp from "sharp";
 import { storageService } from "./storage.service.js";
 import { usersBucketConfigs } from "@/configs/storage.config.js";
 import {
+    AlbumDto,
+    GetUserLikedAlbumDto,
     GetUserLikedSongDto,
     GetUsersDto,
     SongDto,
     UpdateProfileDto,
     UserDto
 } from "@/types/dto/index.js";
-import { songModelToDto, userModelToDto } from "@/utils/modelToDto.js";
+import {
+    albumModelToDto,
+    songModelToDto,
+    userModelToDto
+} from "@/utils/modelToDto.js";
 import { cacheOrFetch } from "@/utils/caching.js";
 import { namespaces } from "@/configs/redis.config.js";
 import { redisService } from "./redis.service.js";
@@ -27,7 +33,8 @@ interface UserServiceInterface {
     updateProfile: (userId: string, data: UpdateProfileDto) => Promise<UserDto>;
     getUser: (userId: string) => Promise<UserDto>;
     getUsers: (args: GetUsersDto) => Promise<UserDto[]>;
-    getUserLikedSong: (args: GetUserLikedSongDto) => Promise<SongDto[]>;
+    getUserLikedSongs: (args: GetUserLikedSongDto) => Promise<SongDto[]>;
+    getUserLikedAlbums: (args: GetUserLikedAlbumDto) => Promise<AlbumDto[]>;
 }
 
 export const userService: UserServiceInterface = {
@@ -174,14 +181,19 @@ export const userService: UserServiceInterface = {
             .map((result) => result.value);
     },
 
-    getUserLikedSong: async (args: GetUserLikedSongDto): Promise<SongDto[]> => {
+    getUserLikedSongs: async (
+        args: GetUserLikedSongDto
+    ): Promise<SongDto[]> => {
         const { options, userId } = args;
         const { limit, offset } = options;
         const user = userRepo.getOneByFilter({ id: userId });
         if (!user) {
-            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
+            throw new AuthenticationError(
+                "User not found",
+                StatusCodes.UNAUTHORIZED
+            );
         }
-        const prismaOptions: Omit<Prisma.LikeFindManyArgs, "where"> = {
+        const prismaOptions: Omit<Prisma.SongLikeFindManyArgs, "where"> = {
             orderBy: {
                 createdAt: Prisma.SortOrder.desc
             },
@@ -191,22 +203,22 @@ export const userService: UserServiceInterface = {
             take: limit,
             skip: offset
         };
-        const cacheKey = `user:${userId}:${stableStringify(prismaOptions)}`;
+        const cacheKey = `songs:user:${userId}:${stableStringify(prismaOptions)}`;
         const { data: likes, cacheHit } = await cacheOrFetch(
             namespaces.Like,
             cacheKey,
             async () =>
-                (await likeRepo.getManyByFilter(
+                (await songLikeRepo.getManyByFilter(
                     { userId },
                     prismaOptions
-                )) as Prisma.LikeGetPayload<{ include: { song: true } }>[]
+                )) as Prisma.SongLikeGetPayload<{ include: { song: true } }>[]
         );
 
         if (!cacheHit) {
             redisService.setAdd(
                 {
                     namespace: namespaces.Like,
-                    key: `user:${userId}`,
+                    key: `songs:user:${userId}`,
                     members: [stableStringify(prismaOptions)!]
                 },
                 { EX: envConfig.REDIS_CACHING_EXP }
@@ -216,6 +228,60 @@ export const userService: UserServiceInterface = {
         const songs = likes.map((like) => like.song);
         return (
             await Promise.allSettled(songs.map((song) => songModelToDto(song)))
+        )
+            .filter((result) => result.status == "fulfilled")
+            .map((result) => result.value);
+    },
+
+    getUserLikedAlbums: async (
+        args: GetUserLikedAlbumDto
+    ): Promise<AlbumDto[]> => {
+        const { options, userId } = args;
+        const { limit, offset } = options;
+        const user = userRepo.getOneByFilter({ id: userId });
+        if (!user) {
+            throw new AuthenticationError(
+                "User not found",
+                StatusCodes.UNAUTHORIZED
+            );
+        }
+        const prismaOptions: Omit<Prisma.AlbumLikeFindManyArgs, "where"> = {
+            orderBy: {
+                createdAt: Prisma.SortOrder.desc
+            },
+            include: {
+                album: true
+            },
+            take: limit,
+            skip: offset
+        };
+        const cacheKey = `albums:user:${userId}:${stableStringify(prismaOptions)}`;
+        const { data: likes, cacheHit } = await cacheOrFetch(
+            namespaces.Like,
+            cacheKey,
+            async () =>
+                (await albumLikeRepo.getManyByFilter(
+                    { userId },
+                    prismaOptions
+                )) as Prisma.AlbumLikeGetPayload<{ include: { album: true } }>[]
+        );
+
+        if (!cacheHit) {
+            redisService.setAdd(
+                {
+                    namespace: namespaces.Like,
+                    key: `albums:user:${userId}`,
+                    members: [stableStringify(prismaOptions)!]
+                },
+                { EX: envConfig.REDIS_CACHING_EXP }
+            );
+        }
+
+        const albums = likes.map((like) => like.album);
+        return (
+            await Promise.allSettled(
+                albums.map((album) => albumModelToDto(album))
+            )
         )
             .filter((result) => result.status == "fulfilled")
             .map((result) => result.value);

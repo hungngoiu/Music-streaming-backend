@@ -5,7 +5,8 @@ interface userRouteConfigProps extends defaultRoutesConfigProps {
     updateProfile: string;
     getUser: string;
     getUsers: string;
-    getUserLikedSong: string;
+    getUserLikedSongs: string;
+    getUserLikedAlbums: string;
 }
 
 export const userRouteConfig: userRouteConfigProps = {
@@ -15,5 +16,6 @@ export const userRouteConfig: userRouteConfigProps = {
     updateProfile: "/profiles",
     getUser: "/:id",
     getUsers: "/many",
-    getUserLikedSong: "/me/liked-songs"
+    getUserLikedSongs: "/me/liked-songs",
+    getUserLikedAlbums: "/me/liked-albums"
 };

@@ -179,5 +179,52 @@ export const albumController = {
         } catch (err) {
             next(err);
         }
+    },
+
+    likeAlbum: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const user = req.user!;
+            const albumId = req.params.id;
+            await albumService.likeAlbum(user.id, albumId);
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Like album successfully"
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    unlikeAlbum: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const user = req.user!;
+            const albumId = req.params.id;
+            await albumService.unlikeAlbum(user.id, albumId);
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Unlike album successfully"
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+    getLikeStatus: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const user = req.user!;
+            const albumId = req.params.id;
+            const likeStatus = await albumService.getLikeStatus(
+                user.id,
+                albumId
+            );
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Get album like status successfully",
+                data: {
+                    likeStatus
+                }
+            });
+        } catch (err) {
+            next(err);
+        }
     }
 };

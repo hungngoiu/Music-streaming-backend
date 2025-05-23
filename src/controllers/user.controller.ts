@@ -1,5 +1,6 @@
 import { CustomError } from "@/errors/CustomError.js";
 import {
+    getUserLikedAlbumsQuerySchema,
     getUserLikedSongsQuerySchema,
     getUsersQuerySchema,
     updateUserProfileSchema
@@ -95,14 +96,14 @@ export const userController = {
         }
     },
 
-    getLikedSong: async (req: Request, res: Response, next: NextFunction) => {
+    getLikedSongs: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const user = req.user!;
             const queries = req.query as z.infer<
                 typeof getUserLikedSongsQuerySchema
             >;
             const { limit = 10, offset = 0 } = queries;
-            const songs = await userService.getUserLikedSong({
+            const songs = await userService.getUserLikedSongs({
                 userId: user.id,
                 options: { limit, offset }
             });
@@ -111,6 +112,28 @@ export const userController = {
                 message: "Get user liked song successfully",
                 data: songs,
                 count: songs.length
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    getLikedAlbums: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const user = req.user!;
+            const queries = req.query as z.infer<
+                typeof getUserLikedAlbumsQuerySchema
+            >;
+            const { limit = 10, offset = 0 } = queries;
+            const albums = await userService.getUserLikedAlbums({
+                userId: user.id,
+                options: { limit, offset }
+            });
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Get user liked album successfully",
+                data: albums,
+                count: albums.length
             });
         } catch (err) {
             next(err);

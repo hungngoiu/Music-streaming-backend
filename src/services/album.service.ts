@@ -3,7 +3,12 @@ import {
     AuthorizationError,
     CustomError
 } from "@/errors/index.js";
-import { albumRepo, songRepo } from "@/repositories/index.js";
+import {
+    albumLikeRepo,
+    albumRepo,
+    songRepo,
+    userRepo
+} from "@/repositories/index.js";
 import {
     AlbumDto,
     CreateAlbumDto,
@@ -52,6 +57,12 @@ interface AlbumServiceInterface {
     getAlbums: (args: GetAlbumsDto) => Promise<AlbumDto[]>;
 
     publicAlbum: (albumId: string, userId: string) => Promise<void>;
+
+    likeAlbum: (userId: string, albumId: string) => Promise<void>;
+
+    unlikeAlbum: (userId: string, albumId: string) => Promise<void>;
+
+    getLikeStatus: (userId: string, albumId: string) => Promise<boolean>;
 }
 
 export const albumService: AlbumServiceInterface = {
@@ -90,7 +101,7 @@ export const albumService: AlbumServiceInterface = {
             ) {
                 throw new AuthenticationError(
                     "User not found",
-                    StatusCodes.NOT_FOUND
+                    StatusCodes.UNAUTHORIZED
                 );
             }
             throw err;
@@ -467,5 +478,73 @@ export const albumService: AlbumServiceInterface = {
             );
         }
         await albumRepo.update({ id: albumId }, { isPublic: true });
+    },
+
+    likeAlbum: async (userId: string, albumId: string) => {
+        const user = userRepo.getOneByFilter({ id: userId });
+        if (!user) {
+            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
+        }
+        const album = await albumRepo.getOneByFilter({ id: albumId });
+        if (!album) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
+        }
+        await albumLikeRepo.likeAlbum(userId, albumId);
+
+        redisService
+            .getSetMembers({
+                namespace: namespaces.Like,
+                key: `albums:user:${userId}`
+            })
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.Like,
+                        keys: [
+                            ...affectedKeys.map(
+                                (key) => `albums:user:${userId}:${key}`
+                            )
+                        ]
+                    });
+                }
+            });
+    },
+
+    unlikeAlbum: async (userId: string, albumId: string) => {
+        const user = userRepo.getOneByFilter({ id: userId });
+        if (!user) {
+            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
+        }
+        const album = await albumRepo.getOneByFilter({ id: albumId });
+        if (!album) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
+        }
+        await albumLikeRepo.unlikeAlbum(userId, albumId);
+
+        redisService
+            .getSetMembers({
+                namespace: namespaces.Like,
+                key: `albums:user:${userId}`
+            })
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.Like,
+                        keys: [
+                            ...affectedKeys.map(
+                                (key) => `albums:user:${userId}:${key}`
+                            )
+                        ]
+                    });
+                }
+            });
+    },
+
+    getLikeStatus: async (userId: string, albumId: string) => {
+        const song = await albumRepo.getOneByFilter({ id: albumId });
+        if (!song) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
+        }
+        return !!(await albumLikeRepo.getOneByFilter({ albumId, userId }));
     }
 };

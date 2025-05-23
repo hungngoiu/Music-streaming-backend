@@ -10,6 +10,8 @@ import {
 import { singleFileUpload } from "@/middlewares/index.js";
 import { dataValidation } from "@/validations/data.validations.js";
 import {
+    getUserLikedSongsQuerySchema,
+    getUserLikedAlbumsQuerySchema,
     getUsersQuerySchema,
     updateUserProfileSchema
 } from "@/schemas/user.shema.js";
@@ -50,11 +52,19 @@ router.get(
 router.get(userRouteConfig.getUser, userController.getUser);
 
 router.get(
-    userRouteConfig.getUserLikedSong,
+    userRouteConfig.getUserLikedSongs,
     verifyTokenMiddleware({ type: "at" }),
     isVerifiedUserMiddleware,
-    dataValidation(getUsersQuerySchema, "query"),
-    userController.getLikedSong
+    dataValidation(getUserLikedSongsQuerySchema, "query"),
+    userController.getLikedSongs
+);
+
+router.get(
+    userRouteConfig.getUserLikedAlbums,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    dataValidation(getUserLikedAlbumsQuerySchema, "query"),
+    userController.getLikedAlbums
 );
 
 export default router;

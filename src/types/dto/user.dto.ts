@@ -25,3 +25,10 @@ export type GetUserLikedSongDto = { userId: string } & {
         offset: number;
     };
 };
+
+export type GetUserLikedAlbumDto = { userId: string } & {
+    options: {
+        limit: number;
+        offset: number;
+    };
+};
