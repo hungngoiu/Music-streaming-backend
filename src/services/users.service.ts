@@ -1,11 +1,17 @@
 import { CustomError } from "@/errors/index.js";
-import { userRepo } from "@/repositories/index.js";
+import { likeRepo, userRepo } from "@/repositories/index.js";
 import { StatusCodes } from "http-status-codes";
 import sharp from "sharp";
 import { storageService } from "./storage.service.js";
 import { usersBucketConfigs } from "@/configs/storage.config.js";
-import { GetUsersDto, UpdateProfileDto, UserDto } from "@/types/dto/index.js";
-import { userModelToDto } from "@/utils/modelToDto.js";
+import {
+    GetUserLikedSongDto,
+    GetUsersDto,
+    SongDto,
+    UpdateProfileDto,
+    UserDto
+} from "@/types/dto/index.js";
+import { songModelToDto, userModelToDto } from "@/utils/modelToDto.js";
 import { cacheOrFetch } from "@/utils/caching.js";
 import { namespaces } from "@/configs/redis.config.js";
 import { redisService } from "./redis.service.js";
@@ -21,6 +27,7 @@ interface UserServiceInterface {
     updateProfile: (userId: string, data: UpdateProfileDto) => Promise<UserDto>;
     getUser: (userId: string) => Promise<UserDto>;
     getUsers: (args: GetUsersDto) => Promise<UserDto[]>;
+    getUserLikedSong: (args: GetUserLikedSongDto) => Promise<SongDto[]>;
 }
 
 export const userService: UserServiceInterface = {
@@ -162,6 +169,53 @@ export const userService: UserServiceInterface = {
         );
         return (
             await Promise.allSettled(users.map((user) => userModelToDto(user)))
+        )
+            .filter((result) => result.status == "fulfilled")
+            .map((result) => result.value);
+    },
+
+    getUserLikedSong: async (args: GetUserLikedSongDto): Promise<SongDto[]> => {
+        const { options, userId } = args;
+        const { limit, offset } = options;
+        const user = userRepo.getOneByFilter({ id: userId });
+        if (!user) {
+            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
+        }
+        const prismaOptions: Omit<Prisma.LikeFindManyArgs, "where"> = {
+            orderBy: {
+                createdAt: Prisma.SortOrder.desc
+            },
+            include: {
+                song: true
+            },
+            take: limit,
+            skip: offset
+        };
+        const cacheKey = `user:${userId}:${stableStringify(prismaOptions)}`;
+        const { data: likes, cacheHit } = await cacheOrFetch(
+            namespaces.Like,
+            cacheKey,
+            async () =>
+                (await likeRepo.getManyByFilter(
+                    { userId },
+                    prismaOptions
+                )) as Prisma.LikeGetPayload<{ include: { song: true } }>[]
+        );
+
+        if (!cacheHit) {
+            redisService.setAdd(
+                {
+                    namespace: namespaces.Like,
+                    key: `user:${userId}`,
+                    members: [stableStringify(prismaOptions)!]
+                },
+                { EX: envConfig.REDIS_CACHING_EXP }
+            );
+        }
+
+        const songs = likes.map((like) => like.song);
+        return (
+            await Promise.allSettled(songs.map((song) => songModelToDto(song)))
         )
             .filter((result) => result.status == "fulfilled")
             .map((result) => result.value);

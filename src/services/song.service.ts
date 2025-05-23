@@ -197,6 +197,24 @@ export const songService: SongServiceInterface = {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }
         await likeRepo.likeSong(userId, songId);
+
+        redisService
+            .getSetMembers({
+                namespace: namespaces.Like,
+                key: `user:${userId}`
+            })
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.Like,
+                        keys: [
+                            ...affectedKeys.map(
+                                (key) => `user:${userId}:${key}`
+                            )
+                        ]
+                    });
+                }
+            });
     },
 
     unlikeSong: async (userId: string, songId: string) => {
@@ -209,6 +227,24 @@ export const songService: SongServiceInterface = {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }
         await likeRepo.unlikeSong(userId, songId);
+
+        redisService
+            .getSetMembers({
+                namespace: namespaces.Like,
+                key: `user:${userId}`
+            })
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.Like,
+                        keys: [
+                            ...affectedKeys.map(
+                                (key) => `user:${userId}:${key}`
+                            )
+                        ]
+                    });
+                }
+            });
     },
 
     getLikeStatus: async (userId: string, songId: string) => {

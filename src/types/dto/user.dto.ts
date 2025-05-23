@@ -18,3 +18,10 @@ export type GetUsersDto = Partial<Pick<UserProfile, "name">> & {
         offset: number;
     };
 };
+
+export type GetUserLikedSongDto = { userId: string } & {
+    options: {
+        limit: number;
+        offset: number;
+    };
+};

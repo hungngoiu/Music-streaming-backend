@@ -7,6 +7,6 @@ model Like {
     song Song @relation(fields: [songId], references: [id])
 
     @@id([userId, songId])
-    @@unique([userId, songId])
+    @@index([createdAt])
     @@map("likes")
 }
