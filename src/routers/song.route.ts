@@ -5,7 +5,11 @@ import {
     verifyTokenMiddleware
 } from "@/middlewares/auth.middleware.js";
 import { fieldsFileUpload } from "@/middlewares/index.js";
-import { getSongQuerySchema, getSongsSchema } from "@/schemas/song.schema.js";
+import {
+    getSongQuerySchema,
+    getSongsSchema,
+    uploadSongSchema
+} from "@/schemas/song.schema.js";
 import { dataValidation } from "@/validations/data.validations.js";
 import { Router } from "express";
 import { Request, Response } from "express";
@@ -24,6 +28,7 @@ router.post(
     songRouteConfig.uploadSong,
     verifyTokenMiddleware({ type: "at" }),
     isVerifiedUserMiddleware,
+    dataValidation(uploadSongSchema, "body"),
     fieldsFileUpload({
         fields: [
             {

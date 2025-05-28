@@ -8,9 +8,12 @@ import {
 import {
     addSongSchema,
     addSongsSchema,
+    createAlbumSchema,
+    deleteSongsSchema,
     getAlbumQuerySchema,
     getAlbumsQuerySchema,
-    setSongsSchema
+    setSongsSchema,
+    updateAlbumSchema
 } from "@/schemas/album.schema.js";
 import { dataValidation } from "@/validations/data.validations.js";
 import { Router, Request, Response } from "express";
@@ -29,11 +32,31 @@ router.post(
     albumRouteConfig.createAlbum,
     verifyTokenMiddleware({ type: "at" }),
     isVerifiedUserMiddleware,
+    dataValidation(createAlbumSchema, "body"),
     singleFileUpload({
         fieldName: "coverImage",
         allowedExtensions: [".jpg", "jpeg", ".png"]
     }),
     albumController.createAlbum
+);
+
+router.patch(
+    albumRouteConfig.updateAlbum,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    dataValidation(updateAlbumSchema, "body"),
+    albumController.updateAlbum
+);
+
+router.put(
+    albumRouteConfig.updateCoverImage,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    singleFileUpload({
+        fieldName: "coverImage",
+        allowedExtensions: [".jpg", "jpeg", ".png"]
+    }),
+    albumController.updateCoverImage
 );
 
 router.patch(
@@ -58,6 +81,14 @@ router.put(
     isVerifiedUserMiddleware,
     dataValidation(setSongsSchema, "body"),
     albumController.setSongs
+);
+
+router.delete(
+    albumRouteConfig.deleteSongs,
+    verifyTokenMiddleware({ type: "at" }),
+    isVerifiedUserMiddleware,
+    dataValidation(deleteSongsSchema, "body"),
+    albumController.deleteSongs
 );
 
 router.patch(

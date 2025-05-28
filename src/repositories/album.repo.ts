@@ -2,7 +2,6 @@ import { Album, Prisma } from "@prisma/client";
 import prismaClient from "@/databases/prisma.js";
 import { searchAlbums, searchAlbumsWithUserId } from "@prisma/client/sql";
 import { omitPropsFromObject } from "@/utils/object.js";
-import logger from "@/utils/logger.js";
 
 export const albumRepo = {
     create: (
@@ -154,6 +153,7 @@ export const albumRepo = {
         songId: string,
         index?: number
     ) => {
+        // songs already sort before pass in this function
         return await prismaClient.$transaction(async (tx) => {
             const songs = album.songs;
 
@@ -348,8 +348,8 @@ export const albumRepo = {
         }>,
         songIds: string[]
     ) => {
+        // songs already sort before pass in this function
         const songs = album.songs;
-        logger.debug(songIds);
         let startIndex = 0;
         if (songs.length != 0) {
             startIndex = songs.length;
@@ -375,7 +375,7 @@ export const albumRepo = {
                 ))
             ]
         };
-    }
+    },
 
     // addSongs: async (
     //     album: Prisma.AlbumGetPayload<{
@@ -410,4 +410,69 @@ export const albumRepo = {
     //         ]
     //     };
     // }
+
+    deleteSongs: async (
+        album: Prisma.AlbumGetPayload<{ include: { songs: true } }>,
+        songIds: string[]
+    ) => {
+        const songs = album.songs;
+        const deleteIndexes = songIds.map((id) =>
+            songs.findIndex((song) => song.id === id)
+        );
+
+        // Sort to handle in correct order
+        deleteIndexes.sort((a, b) => a - b);
+
+        await prismaClient.$transaction(async (tx) => {
+            // Disconnect songs from album
+            for (const id of songIds) {
+                await tx.song.update({
+                    where: { id },
+                    data: {
+                        albumOrder: null,
+                        album: {
+                            disconnect: true
+                        }
+                    }
+                });
+            }
+
+            // Adjust albumOrder for remaining songs
+            let shiftIndex = 1;
+            for (let i = 0; i < deleteIndexes.length - 1; i++) {
+                const start = deleteIndexes[i] + 1;
+                const end = deleteIndexes[i + 1];
+
+                for (let j = start; j < end; j++) {
+                    await tx.song.update({
+                        where: { id: songs[j].id },
+                        data: {
+                            albumOrder: {
+                                decrement: shiftIndex
+                            }
+                        }
+                    });
+                }
+
+                shiftIndex++;
+            }
+
+            // Final batch: adjust songs after the last deleted song
+            const lastDeleteIndex = deleteIndexes[deleteIndexes.length - 1];
+            for (let i = lastDeleteIndex + 1; i < songs.length; i++) {
+                await tx.song.update({
+                    where: { id: songs[i].id },
+                    data: {
+                        albumOrder: {
+                            decrement: shiftIndex
+                        }
+                    }
+                });
+            }
+        });
+        return {
+            ...album,
+            songs: album.songs.filter((song) => !songIds.includes(song.id))
+        };
+    }
 };

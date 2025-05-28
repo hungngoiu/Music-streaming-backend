@@ -5,7 +5,9 @@ import {
     getAlbumQuerySchema,
     getAlbumsQuerySchema,
     setSongsSchema,
-    uploadAlbumSchema
+    createAlbumSchema,
+    updateAlbumSchema,
+    deleteSongsSchema
 } from "@/schemas/index.js";
 import { albumService } from "@/services/index.js";
 import { omitPropsFromObject } from "@/utils/object.js";
@@ -16,7 +18,7 @@ import { z } from "zod";
 export const albumController = {
     createAlbum: async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const bodyData = req.body as z.infer<typeof uploadAlbumSchema>;
+            const bodyData = req.body as z.infer<typeof createAlbumSchema>;
             const user = req.user!;
             const file = req.file;
             if (!file) {
@@ -33,6 +35,60 @@ export const albumController = {
             res.status(StatusCodes.CREATED).json({
                 status: "success",
                 message: "Album created successfully",
+                data: {
+                    album
+                }
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    updateAlbum: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const user = req.user!;
+            const albumId = req.params.id;
+            const bodyData = req.body as z.infer<typeof updateAlbumSchema>;
+            const album = await albumService.updateAlbum(
+                albumId,
+                user.id,
+                bodyData
+            );
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Updated album successfully",
+                data: {
+                    album
+                }
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    updateCoverImage: async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const albumId = req.params.id;
+            const user = req.user!;
+            const file = req.file;
+            if (!file) {
+                throw new CustomError(
+                    "Must upload an image",
+                    StatusCodes.BAD_REQUEST
+                );
+            }
+            const album = await albumService.updateCoverImage(
+                albumId,
+                user.id,
+                file
+            );
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Updated album cover image successfully",
                 data: {
                     album
                 }
@@ -107,6 +163,30 @@ export const albumController = {
             res.status(StatusCodes.OK).json({
                 status: "success",
                 message: "Add songs to album successfully",
+                data: {
+                    album
+                }
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    deleteSongs: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const albumId = req.params.albumId;
+            const songIds = req.body as z.infer<typeof deleteSongsSchema>;
+            const user = req.user!;
+
+            const album = await albumService.deleteSongs(
+                albumId,
+                songIds,
+                user.id
+            );
+
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Delete songs from album successfully",
                 data: {
                     album
                 }

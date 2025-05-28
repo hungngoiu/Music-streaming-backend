@@ -71,7 +71,7 @@ export const albumRouteDoc: OpenAPIV3.PathsObject = {
     [`${albumRouteConfig.index}${convertToOpenApiRoute(albumRouteConfig.addSong)}`]:
         {
             patch: {
-                summary: "Add a song to an album at an index",
+                summary: "Insert a song to an album at index",
                 security: [
                     {
                         bearerAuth: []
@@ -217,6 +217,119 @@ export const albumRouteDoc: OpenAPIV3.PathsObject = {
                 tags: ["albums"]
             }
         },
+    [`${albumRouteConfig.index}${convertToOpenApiRoute(albumRouteConfig.deleteSongs)}`]:
+        {
+            delete: {
+                summary: "Delete songs from an album",
+                security: [
+                    {
+                        bearerAuth: []
+                    }
+                ],
+                parameters: [
+                    {
+                        in: "path",
+                        name: "albumId",
+                        description: "Id of the album",
+                        schema: {
+                            type: "string"
+                        },
+                        required: true
+                    }
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "array",
+                                items: {
+                                    type: "string",
+                                    title: "songIds"
+                                }
+                            }
+                        }
+                    }
+                },
+                responses: {
+                    "200": {
+                        description: "Delete songs from album successfully"
+                    },
+                    "40x": {
+                        description: "Error"
+                    }
+                },
+                tags: ["albums"]
+            }
+        },
+    [`${albumRouteConfig.index}${convertToOpenApiRoute(albumRouteConfig.updateCoverImage)}`]:
+        {
+            put: {
+                summary: "Update album cover image",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    {
+                        in: "path",
+                        name: "id",
+                        description: "Id of the album",
+                        schema: {
+                            type: "string"
+                        },
+                        required: true
+                    }
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "multipart/form-data": {
+                            schema: {
+                                type: "object",
+                                required: ["coverImage"],
+                                properties: {
+                                    coverImage: {
+                                        description:
+                                            "Accept .jpg, .jpeg, .png images",
+                                        type: "string",
+                                        format: "base64"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                responses: {
+                    "200": {
+                        description: "Update album cover successfully",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    properties: {
+                                        status: {
+                                            type: "string",
+                                            example: "success"
+                                        },
+                                        message: { type: "string" },
+                                        data: {
+                                            type: "object",
+                                            properties: {
+                                                album: {
+                                                    $ref: "#/components/schemas/album"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "40x": {
+                        description: "Error"
+                    }
+                },
+                tags: ["albums"]
+            }
+        },
     [`${albumRouteConfig.index}${convertToOpenApiRoute(albumRouteConfig.publicAlbum)}`]:
         {
             patch: {
@@ -248,70 +361,121 @@ export const albumRouteDoc: OpenAPIV3.PathsObject = {
                 tags: ["albums"]
             }
         },
-    [`${albumRouteConfig.index}${convertToOpenApiRoute(albumRouteConfig.getAlbum)}`]:
-        {
-            get: {
-                summary: "Get an album",
-                security: [
-                    {
-                        bearerAuth: []
-                    }
-                ],
-                description:
-                    "Fetch data of an public album, optionally login to see private album of that user",
-                parameters: [
-                    {
-                        in: "path",
-                        name: "id",
-                        description: "Id of the song",
-                        schema: {
-                            type: "string"
-                        },
-                        required: true
+    [`${albumRouteConfig.index}/{id}`]: {
+        get: {
+            summary: "Get an album",
+            security: [
+                {
+                    bearerAuth: []
+                }
+            ],
+            description:
+                "Fetch data of an public album, optionally login to see private album of that user",
+            parameters: [
+                {
+                    in: "path",
+                    name: "id",
+                    description: "Id of the song",
+                    schema: {
+                        type: "string"
                     },
-                    {
-                        in: "query",
-                        name: "userProfile",
-                        description: "Optional fetching user profile",
-                        schema: {
-                            type: "boolean"
-                        }
-                    },
-                    {
-                        in: "query",
-                        name: "songs",
-                        description: "Optional fetching songs",
-                        schema: {
-                            type: "boolean"
+                    required: true
+                },
+                {
+                    in: "query",
+                    name: "userProfile",
+                    description: "Optional fetching user profile",
+                    schema: {
+                        type: "boolean"
+                    }
+                },
+                {
+                    in: "query",
+                    name: "songs",
+                    description: "Optional fetching songs",
+                    schema: {
+                        type: "boolean"
+                    }
+                }
+            ],
+            responses: {
+                "200": {
+                    description: "Get album successfully",
+                    content: {
+                        "application/json": {
+                            example: {
+                                status: "success",
+                                message: "string",
+                                data: {
+                                    album: {
+                                        ...albumExample,
+                                        user: userExample
+                                    }
+                                }
+                            }
                         }
                     }
-                ],
-                responses: {
-                    "200": {
-                        description: "Get album successfully",
-                        content: {
-                            "application/json": {
-                                example: {
-                                    status: "success",
-                                    message: "string",
+                },
+                "404": {
+                    description: "Album not found, or not visible to this user"
+                }
+            },
+            tags: ["albums"]
+        },
+        patch: {
+            summary: "Update an album",
+            security: [
+                {
+                    bearerAuth: []
+                }
+            ],
+            requestBody: {
+                content: {
+                    "application/json": {
+                        schema: {
+                            type: "object",
+                            properties: {
+                                name: {
+                                    type: "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            responses: {
+                "200": {
+                    description: "Update album successfully",
+                    content: {
+                        "application/json": {
+                            schema: {
+                                type: "object",
+                                properties: {
+                                    status: {
+                                        type: "string",
+                                        example: "success"
+                                    },
+                                    message: { type: "string" },
                                     data: {
-                                        album: {
-                                            ...albumExample,
-                                            user: userExample
+                                        type: "object",
+                                        properties: {
+                                            album: {
+                                                $ref: "#/components/schemas/album"
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                    },
-                    "404": {
-                        description:
-                            "Album not found, or not visible to this user"
                     }
                 },
-                tags: ["albums"]
-            }
-        },
+                "40x": {
+                    description: "Error"
+                }
+            },
+            tags: ["albums"]
+        }
+    },
     [`${albumRouteConfig.index}${albumRouteConfig.getAlbums}`]: {
         get: {
             summary: "Search albums by name and userId",
