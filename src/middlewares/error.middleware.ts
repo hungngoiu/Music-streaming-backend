@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from "express";
 import {
     AuthenticationError,
+    AuthorizationError,
     CustomError,
     ValidationError
 } from "@/errors/index.js";
@@ -32,6 +33,18 @@ export const errorMiddleware = (
     // authentication error
     if (err instanceof AuthenticationError) {
         logger.warn("Authentication error: " + err.message);
+        res.status(err.statusCode).json({
+            status: "failed",
+            error: {
+                type: err.name,
+                message: err.message
+            }
+        });
+        return;
+    }
+    // authorization error
+    if (err instanceof AuthorizationError) {
+        logger.warn("Authorization error: " + err.message);
         res.status(err.statusCode).json({
             status: "failed",
             error: {

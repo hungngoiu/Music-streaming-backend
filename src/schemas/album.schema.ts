@@ -1,8 +1,12 @@
 import { booleanSchema } from "@/utils/zod.js";
 import { z } from "zod";
 
-export const uploadAlbumSchema = z.object({
+export const createAlbumSchema = z.object({
     name: z.string().min(1, "Name required")
+});
+
+export const updateAlbumSchema = z.object({
+    name: z.string().min(1, "Name must not be empty").optional()
 });
 
 export const setSongsSchema = z.string().array();
@@ -12,6 +16,11 @@ export const addSongSchema = z.object({
 });
 
 export const addSongsSchema = z
+    .string()
+    .array()
+    .nonempty("At least one songId must be provided");
+
+export const deleteSongsSchema = z
     .string()
     .array()
     .nonempty("At least one songId must be provided");
