@@ -658,7 +658,7 @@ export const albumService: AlbumServiceInterface = {
     },
 
     likeAlbum: async (userId: string, albumId: string) => {
-        const user = userRepo.getOneByFilter({ id: userId });
+        const user = await userRepo.getOneByFilter({ id: userId });
         if (!user) {
             throw new CustomError("User not found", StatusCodes.NOT_FOUND);
         }
@@ -688,7 +688,7 @@ export const albumService: AlbumServiceInterface = {
     },
 
     unlikeAlbum: async (userId: string, albumId: string) => {
-        const user = userRepo.getOneByFilter({ id: userId });
+        const user = await userRepo.getOneByFilter({ id: userId });
         if (!user) {
             throw new CustomError("User not found", StatusCodes.NOT_FOUND);
         }

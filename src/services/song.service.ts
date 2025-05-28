@@ -191,7 +191,7 @@ export const songService: SongServiceInterface = {
     },
 
     likeSong: async (userId: string, songId: string) => {
-        const user = userRepo.getOneByFilter({ id: userId });
+        const user = await userRepo.getOneByFilter({ id: userId });
         if (!user) {
             throw new AuthenticationError(
                 "User not found",
@@ -224,7 +224,7 @@ export const songService: SongServiceInterface = {
     },
 
     unlikeSong: async (userId: string, songId: string) => {
-        const user = userRepo.getOneByFilter({ id: userId });
+        const user = await userRepo.getOneByFilter({ id: userId });
         if (!user) {
             throw new AuthenticationError(
                 "User not found",
