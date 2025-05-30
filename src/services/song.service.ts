@@ -145,7 +145,7 @@ export const songService: SongServiceInterface = {
 
     getSongs: async (args: GetSongsDto): Promise<SongDto[]> => {
         const { options, name, userId } = args;
-        const { limit, offset } = options;
+        const { limit, offset, userProfiles } = options;
         const songs = await songRepo.searchSongs(
             { name, userId },
             {
@@ -154,7 +154,7 @@ export const songService: SongServiceInterface = {
                 include: {
                     user: {
                         include: {
-                            userProfile: options?.userProfiles
+                            userProfile: userProfiles
                         }
                     }
                 }
@@ -202,25 +202,50 @@ export const songService: SongServiceInterface = {
         if (!song) {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }
-        await songLikeRepo.likeSong(userId, songId);
+        const { alreadyLiked } = await songLikeRepo.likeSong(userId, songId);
 
-        redisService
-            .getSetMembers({
-                namespace: namespaces.Like,
-                key: `songs:user:${userId}`
-            })
-            .then((affectedKeys) => {
+        (async () => {
+            if (!alreadyLiked) {
+                const affectedKeys = await redisService.getSetMembers({
+                    namespace: namespaces.Like,
+                    key: `songs:user:${userId}`
+                });
                 if (affectedKeys.length != 0) {
-                    redisService.delete({
+                    await redisService.delete({
                         namespace: namespaces.Like,
                         keys: [
                             ...affectedKeys.map(
-                                (key) => `user:${userId}:${key}`
+                                (key) => `songs:user:${userId}:${key}`
                             )
                         ]
                     });
                 }
-            });
+                const date = new Date().toISOString().slice(0, 10);
+                const key = `songs:dailyLikes:${date}`;
+
+                const keyExisted = await redisService.isExist({
+                    namespace: namespaces.Like,
+                    key
+                });
+
+                await redisService.zSetIncrease({
+                    namespace: namespaces.Like,
+                    key,
+                    member: songId,
+                    value: 1
+                });
+
+                if (!keyExisted) {
+                    await redisService.setExpire(
+                        {
+                            namespace: namespaces.Like,
+                            key
+                        },
+                        7 * 24 * 60 * 60
+                    );
+                }
+            }
+        })();
     },
 
     unlikeSong: async (userId: string, songId: string) => {
@@ -235,25 +260,54 @@ export const songService: SongServiceInterface = {
         if (!song) {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
         }
-        await songLikeRepo.unlikeSong(userId, songId);
+        const alreadyLiked = await songLikeRepo.unlikeSong(userId, songId);
 
-        redisService
-            .getSetMembers({
-                namespace: namespaces.Like,
-                key: `songs:user:${userId}`
-            })
-            .then((affectedKeys) => {
-                if (affectedKeys.length != 0) {
-                    redisService.delete({
+        (async () => {
+            if (alreadyLiked) {
+                const affectedKeys = await redisService.getSetMembers({
+                    namespace: namespaces.Like,
+                    key: `songs:user:${userId}`
+                });
+
+                if (affectedKeys.length !== 0) {
+                    await redisService.delete({
                         namespace: namespaces.Like,
-                        keys: [
-                            ...affectedKeys.map(
-                                (key) => `user:${userId}:${key}`
-                            )
-                        ]
+                        keys: affectedKeys.map(
+                            (key) => `songs:user:${userId}:${key}`
+                        )
                     });
                 }
-            });
+
+                const date = new Date().toISOString().slice(0, 10);
+                const key = `songs:dailyLikes:${date}`;
+
+                const keyExisted = await redisService.isExist({
+                    namespace: namespaces.Like,
+                    key
+                });
+
+                if (!keyExisted) {
+                    // Key doesn't exist — skip any decrement
+                    return;
+                }
+
+                // Decrement the score
+                const newScore = await redisService.zSetIncrease({
+                    namespace: namespaces.Like,
+                    key,
+                    member: songId,
+                    value: -1
+                });
+                // Remove member if score is 0 or below
+                if (newScore <= 0) {
+                    await redisService.zSetDeleteMember({
+                        namespace: namespaces.Like,
+                        key,
+                        members: [songId]
+                    });
+                }
+            }
+        })();
     },
 
     getLikeStatus: async (userId: string, songId: string) => {

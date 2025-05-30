@@ -34,6 +34,26 @@ export const songRepo = {
         });
     },
 
+    getManyByIds: async (
+        ids: string[],
+        options?: Omit<Prisma.SongFindManyArgs, "where">
+    ): Promise<Song[]> => {
+        const songs = await prismaClient.song.findMany({
+            where: {
+                id: {
+                    in: ids
+                }
+            },
+            ...options
+        });
+
+        const songMap = new Map(songs.map((song) => [song.id, song]));
+
+        return ids
+            .map((id) => songMap.get(id))
+            .filter((song): song is Song => song !== undefined);
+    },
+
     searchSongs: async (
         filter: { userId?: string; name?: string },
         options?: Omit<Prisma.SongFindManyArgs, "where">

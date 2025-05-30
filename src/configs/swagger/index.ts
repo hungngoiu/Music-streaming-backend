@@ -9,6 +9,7 @@ import { songSchema } from "./schemas/song.js";
 import { songRouteDoc } from "./swagger.song.js";
 import { albumSchema } from "./schemas/album.js";
 import { albumRouteDoc } from "./swagger.album.js";
+import { feedRoutedoc } from "./swagger.feed.js";
 
 export const swaggerOptions: SwaggerUiOptions = {
     swaggerOptions: {
@@ -32,7 +33,8 @@ const document: OpenAPIV3.Document = {
         ...authRouteDoc,
         ...userRouteDoc,
         ...songRouteDoc,
-        ...albumRouteDoc
+        ...albumRouteDoc,
+        ...feedRoutedoc
     },
     components: {
         schemas: {

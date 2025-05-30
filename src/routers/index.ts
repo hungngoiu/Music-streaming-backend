@@ -3,11 +3,13 @@ import authRouter from "./auth.route.js";
 import userRouter from "./user.route.js";
 import songRouter from "./song.route.js";
 import albumRouter from "./album.route.js";
+import feedRouter from "./feed.route.js";
 import {
     albumRouteConfig,
     authRouteConfig,
     songRouteConfig,
-    userRouteConfig
+    userRouteConfig,
+    feedRouteConfig
 } from "@/configs/routes/index.js";
 import { requestLogger } from "@/utils/logger.js";
 
@@ -34,6 +36,10 @@ const apisConfigs: configProps[] = [
     {
         index: albumRouteConfig.index,
         router: albumRouter
+    },
+    {
+        index: feedRouteConfig.index,
+        router: feedRouter
     }
 ];
 
