@@ -13,6 +13,10 @@ export type CreateAlbumDto = {
     name: string;
 };
 
+export type UpdateAlbumDto = {
+    name?: string;
+};
+
 export type GetAlbumDto = Pick<Album, "id"> & {
     options: {
         userProfile: boolean;

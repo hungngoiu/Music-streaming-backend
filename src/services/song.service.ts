@@ -1,4 +1,4 @@
-import { CustomError } from "@/errors/index.js";
+import { AuthenticationError, CustomError } from "@/errors/index.js";
 import {
     CreateSongDto,
     GetSongDto,
@@ -8,7 +8,7 @@ import {
 import { StatusCodes } from "http-status-codes";
 import { storageService } from "./storage.service.js";
 import { musicsBucketConfigs } from "@/configs/storage.config.js";
-import { songRepo, userRepo } from "@/repositories/index.js";
+import { songLikeRepo, songRepo, userRepo } from "@/repositories/index.js";
 import sharp from "sharp";
 import { envConfig } from "@/configs/env.config.js";
 import { songModelToDto } from "@/utils/modelToDto.js";
@@ -16,6 +16,7 @@ import stableStringify from "json-stable-stringify";
 import { cacheOrFetch } from "@/utils/caching.js";
 import { namespaces } from "@/configs/redis.config.js";
 import { redisService } from "./index.js";
+import { Prisma } from "@prisma/client";
 interface SongServiceInterface {
     createSong: (
         data: CreateSongDto,
@@ -28,6 +29,12 @@ interface SongServiceInterface {
     getSongs: (args: GetSongsDto) => Promise<SongDto[]>;
 
     getSongSignedAudioUrl: (id: string) => Promise<string | null>;
+
+    likeSong: (userId: string, songId: string) => Promise<void>;
+
+    unlikeSong: (userId: string, songId: string) => Promise<void>;
+
+    getLikeStatus: (userId: string, songId: string) => Promise<boolean>;
 }
 
 export const songService: SongServiceInterface = {
@@ -37,11 +44,6 @@ export const songService: SongServiceInterface = {
         audioFile: Express.Multer.File,
         coverImg: Express.Multer.File
     ): Promise<SongDto> => {
-        const user = userRepo.getOneByFilter({ id: userId });
-        if (!user) {
-            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
-        }
-
         //Format the image before uploading
         const coverImgBuffer = await sharp(coverImg.buffer)
             .resize(1024, 1024, {
@@ -84,45 +86,55 @@ export const songService: SongServiceInterface = {
                 musicsBucketConfigs.name,
                 filePaths
             );
+            if (
+                err instanceof Prisma.PrismaClientKnownRequestError &&
+                err.code == "P2003"
+            ) {
+                throw new AuthenticationError(
+                    "User not found",
+                    StatusCodes.UNAUTHORIZED
+                );
+            }
             throw err;
         }
     },
 
     getSong: async (args: GetSongDto): Promise<SongDto> => {
         const { id, options } = args;
-        const cacheKey = `${id}:${stableStringify(options)}`;
+        const prismaOptions = {
+            include: {
+                user: {
+                    include: {
+                        ...options
+                    }
+                }
+            }
+        };
+        const cacheKey = `${id}:${stableStringify(prismaOptions)}`;
         const { data: song, cacheHit } = await cacheOrFetch(
             namespaces.Song,
             cacheKey,
-            () =>
-                songRepo.getOneByFilter(
-                    { id },
-                    {
-                        omit: {
-                            albumOrder: true
-                        },
-                        include: {
-                            user: {
-                                omit: {
-                                    password: true
-                                },
-                                include: {
-                                    ...options
-                                }
-                            }
-                        }
-                    }
-                )
+            () => songRepo.getOneByFilter({ id }, prismaOptions)
         );
         if (!cacheHit) {
             redisService.setAdd(
                 {
                     namespace: namespaces.Song,
                     key: id,
-                    members: [stableStringify(options)!]
+                    members: [stableStringify(prismaOptions)!]
                 },
                 { EX: envConfig.REDIS_CACHING_EXP }
             );
+            if (options.userProfile) {
+                redisService.setAdd(
+                    {
+                        namespace: namespaces.Song,
+                        key: `${id}:userProfile`,
+                        members: [stableStringify(prismaOptions)!]
+                    },
+                    { EX: envConfig.REDIS_CACHING_EXP }
+                );
+            }
         }
         if (!song) {
             throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
@@ -133,28 +145,25 @@ export const songService: SongServiceInterface = {
 
     getSongs: async (args: GetSongsDto): Promise<SongDto[]> => {
         const { options, name, userId } = args;
-        const { limit, offset } = options;
+        const { limit, offset, userProfiles } = options;
         const songs = await songRepo.searchSongs(
             { name, userId },
             {
                 take: limit,
                 skip: offset,
-                omit: {
-                    albumOrder: true
-                },
                 include: {
                     user: {
-                        omit: {
-                            password: true
-                        },
                         include: {
-                            userProfile: options?.userProfiles
+                            userProfile: userProfiles
                         }
                     }
                 }
             }
         );
 
+        // Use allSettled here for filter out successfully fetch result,
+        // fail to fetch doesn't reject the promise.
+        // If use Promise.all will caused the promise reject for only 1 fail result
         return (
             await Promise.allSettled(songs.map((song) => songModelToDto(song)))
         )
@@ -179,5 +188,133 @@ export const songService: SongServiceInterface = {
                 )
         );
         return audioUrl;
+    },
+
+    likeSong: async (userId: string, songId: string) => {
+        const user = await userRepo.getOneByFilter({ id: userId });
+        if (!user) {
+            throw new AuthenticationError(
+                "User not found",
+                StatusCodes.UNAUTHORIZED
+            );
+        }
+        const song = await songRepo.getOneByFilter({ id: songId });
+        if (!song) {
+            throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
+        }
+        const { alreadyLiked } = await songLikeRepo.likeSong(userId, songId);
+
+        (async () => {
+            if (!alreadyLiked) {
+                const affectedKeys = await redisService.getSetMembers({
+                    namespace: namespaces.Like,
+                    key: `songs:user:${userId}`
+                });
+                if (affectedKeys.length != 0) {
+                    await redisService.delete({
+                        namespace: namespaces.Like,
+                        keys: [
+                            ...affectedKeys.map(
+                                (key) => `songs:user:${userId}:${key}`
+                            )
+                        ]
+                    });
+                }
+                const date = new Date().toISOString().slice(0, 10);
+                const key = `songs:dailyLikes:${date}`;
+
+                const keyExisted = await redisService.isExist({
+                    namespace: namespaces.Like,
+                    key
+                });
+
+                await redisService.zSetIncrease({
+                    namespace: namespaces.Like,
+                    key,
+                    member: songId,
+                    value: 1
+                });
+
+                if (!keyExisted) {
+                    await redisService.setExpire(
+                        {
+                            namespace: namespaces.Like,
+                            key
+                        },
+                        7 * 24 * 60 * 60
+                    );
+                }
+            }
+        })();
+    },
+
+    unlikeSong: async (userId: string, songId: string) => {
+        const user = await userRepo.getOneByFilter({ id: userId });
+        if (!user) {
+            throw new AuthenticationError(
+                "User not found",
+                StatusCodes.UNAUTHORIZED
+            );
+        }
+        const song = await songRepo.getOneByFilter({ id: songId });
+        if (!song) {
+            throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
+        }
+        const alreadyLiked = await songLikeRepo.unlikeSong(userId, songId);
+
+        (async () => {
+            if (alreadyLiked) {
+                const affectedKeys = await redisService.getSetMembers({
+                    namespace: namespaces.Like,
+                    key: `songs:user:${userId}`
+                });
+
+                if (affectedKeys.length !== 0) {
+                    await redisService.delete({
+                        namespace: namespaces.Like,
+                        keys: affectedKeys.map(
+                            (key) => `songs:user:${userId}:${key}`
+                        )
+                    });
+                }
+
+                const date = new Date().toISOString().slice(0, 10);
+                const key = `songs:dailyLikes:${date}`;
+
+                const keyExisted = await redisService.isExist({
+                    namespace: namespaces.Like,
+                    key
+                });
+
+                if (!keyExisted) {
+                    // Key doesn't exist — skip any decrement
+                    return;
+                }
+
+                // Decrement the score
+                const newScore = await redisService.zSetIncrease({
+                    namespace: namespaces.Like,
+                    key,
+                    member: songId,
+                    value: -1
+                });
+                // Remove member if score is 0 or below
+                if (newScore <= 0) {
+                    await redisService.zSetDeleteMember({
+                        namespace: namespaces.Like,
+                        key,
+                        members: [songId]
+                    });
+                }
+            }
+        })();
+    },
+
+    getLikeStatus: async (userId: string, songId: string) => {
+        const song = await songRepo.getOneByFilter({ id: songId });
+        if (!song) {
+            throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
+        }
+        return !!(await songLikeRepo.getOneByFilter({ songId, userId }));
     }
 };

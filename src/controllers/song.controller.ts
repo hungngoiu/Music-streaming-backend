@@ -76,7 +76,7 @@ export const songController = {
     getSongs: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const queries = req.query as z.infer<typeof getSongsSchema>;
-            const { limit = 10, offset = 0, userProfiles = false} = queries;
+            const { limit = 10, offset = 0, userProfiles = false } = queries;
             const songs = await songService.getSongs({
                 ...omitPropsFromObject(queries, ["limit", "offset"]),
                 options: {
@@ -136,6 +136,50 @@ export const songController = {
             };
             res.status(StatusCodes.PARTIAL_CONTENT).set(headers);
             audioStream.data.pipe(res);
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    likeSong: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const user = req.user!;
+            const songId = req.params.id;
+            await songService.likeSong(user.id, songId);
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Like song successfully"
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    unlikeSong: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const user = req.user!;
+            const songId = req.params.id;
+            await songService.unlikeSong(user.id, songId);
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Unlike song successfully"
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+    getLikeStatus: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const user = req.user!;
+            const songId = req.params.id;
+            const likeStatus = await songService.getLikeStatus(user.id, songId);
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Get song like status successfully",
+                data: {
+                    likeStatus
+                }
+            });
         } catch (err) {
             next(err);
         }

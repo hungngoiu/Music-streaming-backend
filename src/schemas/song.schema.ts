@@ -17,7 +17,7 @@ export const getSongsSchema = z.object({
     offset: z.coerce
         .number({ message: "The offset must be an integer" })
         .int("The offset must be an integer")
-        .min(0, "The offset must not be negative")
+        .nonnegative("The offset must not be negative")
         .optional(),
     userProfiles: booleanSchema.optional()
 });

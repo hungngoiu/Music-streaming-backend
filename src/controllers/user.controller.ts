@@ -1,8 +1,10 @@
 import { CustomError } from "@/errors/CustomError.js";
 import {
+    getUserLikedAlbumsQuerySchema,
+    getUserLikedSongsQuerySchema,
     getUsersQuerySchema,
     updateUserProfileSchema
-} from "@/schemas/user.shema.js";
+} from "@/schemas/index.js";
 import { userService } from "@/services/users.service.js";
 import { omitPropsFromObject } from "@/utils/object.js";
 import { NextFunction, Request, Response } from "express";
@@ -57,6 +59,7 @@ export const userController = {
     getUser: async (req: Request, res: Response, next: NextFunction) => {
         try {
             const userId = req.params.id;
+            console.log(userId);
             const user = await userService.getUser(userId);
             res.status(StatusCodes.OK).json({
                 status: "success",
@@ -87,6 +90,50 @@ export const userController = {
                 message: "Get users successfully",
                 data: users,
                 count: users.length
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    getLikedSongs: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const user = req.user!;
+            const queries = req.query as z.infer<
+                typeof getUserLikedSongsQuerySchema
+            >;
+            const { limit = 10, offset = 0, userProfiles = false } = queries;
+            const songs = await userService.getUserLikedSongs({
+                userId: user.id,
+                options: { limit, offset, userProfiles }
+            });
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Get user liked song successfully",
+                data: songs,
+                count: songs.length
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    getLikedAlbums: async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const user = req.user!;
+            const queries = req.query as z.infer<
+                typeof getUserLikedAlbumsQuerySchema
+            >;
+            const { limit = 10, offset = 0, userProfiles = false } = queries;
+            const albums = await userService.getUserLikedAlbums({
+                userId: user.id,
+                options: { limit, offset, userProfiles }
+            });
+            res.status(StatusCodes.OK).json({
+                status: "success",
+                message: "Get user liked album successfully",
+                data: albums,
+                count: albums.length
             });
         } catch (err) {
             next(err);

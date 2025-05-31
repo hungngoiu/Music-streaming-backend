@@ -1,12 +1,22 @@
-import { AuthorizationError, CustomError } from "@/errors/index.js";
-import { albumRepo, songRepo } from "@/repositories/index.js";
+import {
+    AuthenticationError,
+    AuthorizationError,
+    CustomError
+} from "@/errors/index.js";
+import {
+    albumLikeRepo,
+    albumRepo,
+    songRepo,
+    userRepo
+} from "@/repositories/index.js";
 import {
     AlbumDto,
     CreateAlbumDto,
     GetAlbumDto,
-    GetAlbumsDto
+    GetAlbumsDto,
+    UpdateAlbumDto
 } from "@/types/dto/index.js";
-import { Prisma } from "@prisma/client";
+import { Album, Prisma } from "@prisma/client";
 import { StatusCodes } from "http-status-codes";
 import sharp from "sharp";
 import { storageService } from "./storage.service.js";
@@ -24,30 +34,43 @@ interface AlbumServiceInterface {
         userId: string,
         coverImg: Express.Multer.File
     ) => Promise<AlbumDto>;
+    updateAlbum: (
+        albumId: string,
+        userId: string,
+        data: UpdateAlbumDto
+    ) => Promise<AlbumDto>;
+    updateCoverImage: (
+        albumId: string,
+        userId: string,
+        coverImg: Express.Multer.File
+    ) => Promise<AlbumDto>;
     setSongs: (
         albumId: string,
         songIds: string[],
         userId: string
     ) => Promise<AlbumDto>;
-
     addSong: (
         albumId: string,
         songId: string,
         userId: string,
         index?: number
     ) => Promise<AlbumDto>;
-
     addSongs: (
         albumId: string,
         songIds: string[],
         userId: string
     ) => Promise<AlbumDto>;
-
+    deleteSongs: (
+        albumId: string,
+        songIds: string[],
+        userId: string
+    ) => Promise<AlbumDto>;
     getAlbum: (args: GetAlbumDto) => Promise<AlbumDto>;
-
     getAlbums: (args: GetAlbumsDto) => Promise<AlbumDto[]>;
-
     publicAlbum: (albumId: string, userId: string) => Promise<void>;
+    likeAlbum: (userId: string, albumId: string) => Promise<void>;
+    unlikeAlbum: (userId: string, albumId: string) => Promise<void>;
+    getLikeStatus: (userId: string, albumId: string) => Promise<boolean>;
 }
 
 export const albumService: AlbumServiceInterface = {
@@ -56,13 +79,8 @@ export const albumService: AlbumServiceInterface = {
         userId: string,
         coverImg: Express.Multer.File
     ): Promise<AlbumDto> => {
-        const user = albumRepo.getOneByFilter({ id: userId });
-        if (!user) {
-            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
-        }
-
         const coverImgBuffer = await sharp(coverImg.buffer)
-            .resize(1400, 1400, {
+            .resize(1024, 1024, {
                 fit: "contain"
             })
             .png()
@@ -85,8 +103,119 @@ export const albumService: AlbumServiceInterface = {
                 musicsBucketConfigs.name,
                 coverImagePath
             );
+            if (
+                err instanceof Prisma.PrismaClientKnownRequestError &&
+                err.code == "P2003"
+            ) {
+                throw new AuthenticationError(
+                    "User not found",
+                    StatusCodes.UNAUTHORIZED
+                );
+            }
             throw err;
         }
+    },
+
+    updateAlbum: async (
+        albumId: string,
+        userId: string,
+        data: UpdateAlbumDto
+    ) => {
+        const album = await albumRepo.getOneByFilter({ id: albumId });
+        if (!album) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
+        }
+        if (album.userId != userId) {
+            throw new AuthorizationError("Album not belong to user");
+        }
+
+        const updateAlbum = await albumModelToDto(
+            await albumRepo.update({ id: albumId }, data)
+        );
+
+        // Delete affected cache
+        redisService
+            .getSetMembers({
+                namespace: namespaces.Album,
+                key: `${albumId}`
+            })
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.Album,
+                        keys: [
+                            ...affectedKeys.map((key) => `${albumId}:${key}`)
+                        ]
+                    });
+                }
+            });
+        return updateAlbum;
+    },
+
+    updateCoverImage: async (
+        albumId: string,
+        userId: string,
+        coverImg: Express.Multer.File
+    ) => {
+        const album = await albumRepo.getOneByFilter({ id: albumId });
+        if (!album) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
+        }
+        if (album.userId != userId) {
+            throw new AuthorizationError("Album not belong to user");
+        }
+
+        const coverImgBuffer = await sharp(coverImg.buffer)
+            .resize(1024, 1024, {
+                fit: "contain"
+            })
+            .png()
+            .toBuffer();
+
+        const oldCoverImagePath = album.coverImagePath;
+        const coverImagePath = await storageService.uploadOne(
+            musicsBucketConfigs.name,
+            musicsBucketConfigs.coverFolder.name,
+            coverImgBuffer
+        );
+
+        let updatedAlbum: Album;
+        try {
+            updatedAlbum = await albumRepo.update(
+                { id: albumId },
+                { coverImagePath }
+            );
+        } catch (err) {
+            await storageService.deleteOne(
+                musicsBucketConfigs.name,
+                coverImagePath
+            );
+            throw err;
+        }
+        if (oldCoverImagePath) {
+            await storageService.deleteOne(
+                musicsBucketConfigs.name,
+                oldCoverImagePath
+            );
+        }
+
+        // Delete affected cache
+        redisService
+            .getSetMembers({
+                namespace: namespaces.Album,
+                key: albumId
+            })
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.Album,
+                        keys: [
+                            ...affectedKeys.map((key) => `${albumId}:${key}`)
+                        ]
+                    });
+                }
+            });
+        return albumModelToDto(updatedAlbum);
     },
 
     setSongs: async (
@@ -158,11 +287,8 @@ export const albumService: AlbumServiceInterface = {
         redisService
             .getSetMembers({
                 namespace: namespaces.Album,
-                key: album.id
+                key: `${album.id}:songs`
             })
-            .then((cacheKeys) =>
-                cacheKeys.filter((key) => key.includes(`"songs":true`))
-            )
             .then((affectedKeys) => {
                 if (affectedKeys.length != 0) {
                     redisService.delete({
@@ -187,7 +313,11 @@ export const albumService: AlbumServiceInterface = {
             { id: albumId },
             {
                 include: {
-                    songs: true
+                    songs: {
+                        orderBy: {
+                            albumOrder: "asc"
+                        }
+                    }
                 }
             }
         )) as Prisma.AlbumGetPayload<{
@@ -213,14 +343,12 @@ export const albumService: AlbumServiceInterface = {
                     "The song is already existed in the album",
                     StatusCodes.CONFLICT
                 );
-            }
-            else {
+            } else {
                 throw new CustomError(
                     "The song is assigned to another album",
                     StatusCodes.CONFLICT
                 );
             }
-
         }
 
         const result = await albumRepo.addSong(album, songId, index);
@@ -229,11 +357,8 @@ export const albumService: AlbumServiceInterface = {
         redisService
             .getSetMembers({
                 namespace: namespaces.Album,
-                key: album.id
+                key: `${album.id}:songs`
             })
-            .then((cacheKeys) =>
-                cacheKeys.filter((key) => key.includes(`"songs":true`))
-            )
             .then((affectedKeys) => {
                 if (affectedKeys.length != 0) {
                     redisService.delete({
@@ -251,7 +376,15 @@ export const albumService: AlbumServiceInterface = {
     addSongs: async (albumId: string, songIds: string[], userId: string) => {
         const album = (await albumRepo.getOneByFilter(
             { id: albumId },
-            { include: { songs: true } }
+            {
+                include: {
+                    songs: {
+                        orderBy: {
+                            albumOrder: "asc"
+                        }
+                    }
+                }
+            }
         )) as Prisma.AlbumGetPayload<{
             include: { songs: true };
         }> | null;
@@ -282,6 +415,7 @@ export const albumService: AlbumServiceInterface = {
                 }
             }
         );
+
         const notFoundSongIds = songIds.filter(
             (id) => !songs.map((song) => song.id).includes(id)
         );
@@ -311,21 +445,20 @@ export const albumService: AlbumServiceInterface = {
             );
         }
         // songs that already in the album are ignored
-        const unassignedSongIds = songs
-            .filter((song) => !song.albumId)
-            .map((song) => song.id);
+        const unassignedSongIdSet = new Set(
+            songs.filter((song) => !song.albumId).map((song) => song.id)
+        );
+        const unassignedSongIds = songIds.filter((id) =>
+            unassignedSongIdSet.has(id)
+        );
 
         const result = await albumRepo.addSongs(album, unassignedSongIds);
 
-        // Delete affected cache
         redisService
             .getSetMembers({
                 namespace: namespaces.Album,
-                key: album.id
+                key: `${album.id}:songs`
             })
-            .then((cacheKeys) =>
-                cacheKeys.filter((key) => key.includes(`"songs":true`))
-            )
             .then((affectedKeys) => {
                 if (affectedKeys.length != 0) {
                     redisService.delete({
@@ -340,39 +473,94 @@ export const albumService: AlbumServiceInterface = {
         return albumModelToDto(result);
     },
 
+    deleteSongs: async (albumId: string, songIds: string[], userId: string) => {
+        const album = (await albumRepo.getOneByFilter(
+            { id: albumId },
+            {
+                include: {
+                    songs: {
+                        orderBy: {
+                            albumOrder: "asc"
+                        }
+                    }
+                }
+            }
+        )) as Prisma.AlbumGetPayload<{
+            include: { songs: true };
+        }> | null;
+        if (!album) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
+        }
+        if (userId != album.userId) {
+            throw new AuthorizationError("Album not belong to user");
+        }
+        const duplicatesIds = getDuplicates(songIds);
+        if (duplicatesIds.length != 0) {
+            throw new CustomError(
+                "There are duplicate ids in the list",
+                StatusCodes.BAD_REQUEST
+            );
+        }
+        const notInAlbum = songIds.filter(
+            (id) => !album.songs.some((song) => song.id === id)
+        );
+
+        if (notInAlbum.length > 0) {
+            throw new CustomError(
+                `The following song IDs are not in the album: ${notInAlbum.join(", ")}`,
+                StatusCodes.BAD_REQUEST
+            );
+        }
+        const updatedAlbum = await albumRepo.deleteSongs(album, songIds);
+
+        // Delete affected cache
+        redisService
+            .getSetMembers({
+                namespace: namespaces.Album,
+                key: `${album.id}:songs`
+            })
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.Album,
+                        keys: [
+                            ...affectedKeys.map((key) => `${albumId}:${key}`)
+                        ]
+                    });
+                }
+            });
+
+        return albumModelToDto(updatedAlbum);
+    },
+
     getAlbum: async (args: GetAlbumDto): Promise<AlbumDto> => {
         const { id, options, userId } = args;
-        const cacheKey = `${id}:${stableStringify(options)}`;
+        const prismaOptions = {
+            include: {
+                user: {
+                    include: {
+                        userProfile: options.userProfile
+                    }
+                },
+                songs: options.songs
+                    ? {
+                          orderBy: {
+                              albumOrder: Prisma.SortOrder.asc
+                          }
+                      }
+                    : false
+            }
+        };
+        const cacheKey = `${id}:${stableStringify(prismaOptions)}`;
         const { data: album, cacheHit } = await cacheOrFetch(
             namespaces.Album,
             cacheKey,
             () =>
                 albumRepo.getOneByFilter(
                     {
-                        id,
+                        id
                     },
-                    {
-                        include: {
-                            user: {
-                                omit: {
-                                    password: true
-                                },
-                                include: {
-                                    userProfile: options.userProfile
-                                }
-                            },
-                            songs: options.songs
-                                ? {
-                                    orderBy: {
-                                        albumOrder: "asc"
-                                    },
-                                    omit: {
-                                        albumOrder: true
-                                    }
-                                }
-                                : false
-                        }
-                    }
+                    prismaOptions
                 )
         );
 
@@ -381,10 +569,30 @@ export const albumService: AlbumServiceInterface = {
                 {
                     namespace: namespaces.Album,
                     key: id,
-                    members: [stableStringify(options)!]
+                    members: [stableStringify(prismaOptions)!]
                 },
                 { EX: envConfig.REDIS_CACHING_EXP }
             );
+            if (options.songs) {
+                redisService.setAdd(
+                    {
+                        namespace: namespaces.Album,
+                        key: `${id}:songs`,
+                        members: [stableStringify(prismaOptions)!]
+                    },
+                    { EX: envConfig.REDIS_CACHING_EXP }
+                );
+            }
+            if (options.userProfile) {
+                redisService.setAdd(
+                    {
+                        namespace: namespaces.Album,
+                        key: `${id}:userProfile`,
+                        members: [stableStringify(prismaOptions)!]
+                    },
+                    { EX: envConfig.REDIS_CACHING_EXP }
+                );
+            }
         }
 
         if (!album) {
@@ -406,9 +614,6 @@ export const albumService: AlbumServiceInterface = {
                 skip: offset,
                 include: {
                     user: {
-                        omit: {
-                            password: true
-                        },
                         include: {
                             userProfile: options.userProfiles
                         }
@@ -418,6 +623,9 @@ export const albumService: AlbumServiceInterface = {
             loginUserId
         );
 
+        // Use allSettled here for filter out successfully fetch result,
+        // fail to fetch doesn't reject the promise.
+        // If use Promise.all will caused the promise reject for only 1 fail result
         return (
             await Promise.allSettled(
                 albums.map((album) => albumModelToDto(album))
@@ -429,10 +637,11 @@ export const albumService: AlbumServiceInterface = {
 
     publicAlbum: async (albumId: string, userId: string): Promise<void> => {
         const cacheKey = `${albumId}:${stableStringify({})}`;
-        const { data: album } = await cacheOrFetch(namespaces.Album, cacheKey, () => albumRepo.getOneByFilter({ id: albumId }));
-        if (!album) {
-            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
-        }
+        const { data: album } = await cacheOrFetch(
+            namespaces.Album,
+            cacheKey,
+            () => albumRepo.getOneByFilter({ id: albumId })
+        );
         if (!album) {
             throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
         }
@@ -446,5 +655,73 @@ export const albumService: AlbumServiceInterface = {
             );
         }
         await albumRepo.update({ id: albumId }, { isPublic: true });
+    },
+
+    likeAlbum: async (userId: string, albumId: string) => {
+        const user = await userRepo.getOneByFilter({ id: userId });
+        if (!user) {
+            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
+        }
+        const album = await albumRepo.getOneByFilter({ id: albumId });
+        if (!album) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
+        }
+        await albumLikeRepo.likeAlbum(userId, albumId);
+
+        redisService
+            .getSetMembers({
+                namespace: namespaces.Like,
+                key: `albums:user:${userId}`
+            })
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.Like,
+                        keys: [
+                            ...affectedKeys.map(
+                                (key) => `albums:user:${userId}:${key}`
+                            )
+                        ]
+                    });
+                }
+            });
+    },
+
+    unlikeAlbum: async (userId: string, albumId: string) => {
+        const user = await userRepo.getOneByFilter({ id: userId });
+        if (!user) {
+            throw new CustomError("User not found", StatusCodes.NOT_FOUND);
+        }
+        const album = await albumRepo.getOneByFilter({ id: albumId });
+        if (!album) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
+        }
+        await albumLikeRepo.unlikeAlbum(userId, albumId);
+
+        redisService
+            .getSetMembers({
+                namespace: namespaces.Like,
+                key: `albums:user:${userId}`
+            })
+            .then((affectedKeys) => {
+                if (affectedKeys.length != 0) {
+                    redisService.delete({
+                        namespace: namespaces.Like,
+                        keys: [
+                            ...affectedKeys.map(
+                                (key) => `albums:user:${userId}:${key}`
+                            )
+                        ]
+                    });
+                }
+            });
+    },
+
+    getLikeStatus: async (userId: string, albumId: string) => {
+        const song = await albumRepo.getOneByFilter({ id: albumId });
+        if (!song) {
+            throw new CustomError("Album not found", StatusCodes.NOT_FOUND);
+        }
+        return !!(await albumLikeRepo.getOneByFilter({ albumId, userId }));
     }
 };

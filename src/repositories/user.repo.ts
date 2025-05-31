@@ -17,7 +17,7 @@ export const userRepo = {
     getAllByFilter: (
         filter: Prisma.UserWhereInput,
         options?: Omit<Prisma.UserFindManyArgs, "where">
-     ) => {
+    ) => {
         return prismaClient.user.findMany({
             where: filter,
             ...options

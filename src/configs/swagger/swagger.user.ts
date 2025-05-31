@@ -1,6 +1,8 @@
 import { OpenAPIV3 } from "openapi-types";
 import { userRouteConfig } from "../routes/index.js";
 import { userExample, userProfileExample } from "./schemas/user.js";
+import { songExample } from "./schemas/song.js";
+import { albumExample } from "./schemas/album.js";
 
 export const userRouteDoc: OpenAPIV3.PathsObject = {
     [`${userRouteConfig.index}${userRouteConfig.updateAvatar}`]: {
@@ -208,6 +210,112 @@ export const userRouteDoc: OpenAPIV3.PathsObject = {
                                         userProfile: userProfileExample
                                     }
                                 ],
+                                count: 1
+                            }
+                        }
+                    }
+                }
+            },
+            tags: ["users"]
+        }
+    },
+
+    [`${userRouteConfig.index}${userRouteConfig.getUserLikedSongs}`]: {
+        get: {
+            summary: "Get user like songs",
+            security: [
+                {
+                    bearerAuth: []
+                }
+            ],
+            parameters: [
+                {
+                    in: "query",
+                    name: "limit",
+                    description: "Number of results",
+                    schema: {
+                        type: "integer"
+                    }
+                },
+                {
+                    in: "query",
+                    name: "offset",
+                    description: "Offset of the results",
+                    schema: {
+                        type: "integer"
+                    }
+                },
+                {
+                    in: "query",
+                    name: "userProfiles",
+                    description: "Optional fetching user profile",
+                    schema: {
+                        type: "boolean"
+                    }
+                }
+            ],
+            responses: {
+                "200": {
+                    description: "Get user like songs successfully",
+                    content: {
+                        "application/json": {
+                            example: {
+                                status: "success",
+                                message: "Get user like songs successfully",
+                                data: [songExample],
+                                count: 1
+                            }
+                        }
+                    }
+                }
+            },
+            tags: ["users"]
+        }
+    },
+
+    [`${userRouteConfig.index}${userRouteConfig.getUserLikedAlbums}`]: {
+        get: {
+            summary: "Get user like albums",
+            security: [
+                {
+                    bearerAuth: []
+                }
+            ],
+            parameters: [
+                {
+                    in: "query",
+                    name: "limit",
+                    description: "Number of results",
+                    schema: {
+                        type: "integer"
+                    }
+                },
+                {
+                    in: "query",
+                    name: "offset",
+                    description: "Offset of the results",
+                    schema: {
+                        type: "integer"
+                    }
+                },
+                {
+                    in: "query",
+                    name: "userProfiles",
+                    description: "Optional fetching user profile",
+                    schema: {
+                        type: "boolean"
+                    }
+                }
+            ],
+            responses: {
+                "200": {
+                    description: "Get user like albums successfully",
+                    content: {
+                        "application/json": {
+                            example: {
+                                status: "success",
+                                message: "Get user like albums successfully",
+                                data: [albumExample],
                                 count: 1
                             }
                         }
