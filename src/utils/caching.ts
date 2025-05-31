@@ -6,7 +6,8 @@ import stableStringify from "json-stable-stringify";
 export const cacheOrFetch = async <T>(
     namespace: namespaces,
     key: string,
-    fetchFn: () => Promise<T>
+    fetchFn: () => Promise<T>,
+    cacheDuration?: number
 ): Promise<{ data: T; cacheHit: boolean }> => {
     const cached = await redisService.get({ namespace, key });
     if (cached) {
@@ -17,7 +18,7 @@ export const cacheOrFetch = async <T>(
     if (data) {
         redisService.set(
             { namespace, key, value: stableStringify(data)! },
-            { EX: envConfig.REDIS_CACHING_EXP }
+            { EX: cacheDuration ? cacheDuration : envConfig.REDIS_CACHING_EXP }
         );
     }
     return { data, cacheHit: false };

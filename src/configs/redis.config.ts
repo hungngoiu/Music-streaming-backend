@@ -17,5 +17,6 @@ export enum namespaces {
     Album = "album",
     Song = "song",
     Like = "like",
-    Filepath = "path"
+    Filepath = "path",
+    Feed = "feed"
 }
