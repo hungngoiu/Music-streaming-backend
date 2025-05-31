@@ -244,6 +244,14 @@ export const userRouteDoc: OpenAPIV3.PathsObject = {
                     schema: {
                         type: "integer"
                     }
+                },
+                {
+                    in: "query",
+                    name: "userProfiles",
+                    description: "Optional fetching user profile",
+                    schema: {
+                        type: "boolean"
+                    }
                 }
             ],
             responses: {
@@ -288,6 +296,14 @@ export const userRouteDoc: OpenAPIV3.PathsObject = {
                     description: "Offset of the results",
                     schema: {
                         type: "integer"
+                    }
+                },
+                {
+                    in: "query",
+                    name: "userProfiles",
+                    description: "Optional fetching user profile",
+                    schema: {
+                        type: "boolean"
                     }
                 }
             ],
