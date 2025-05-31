@@ -56,7 +56,7 @@ export const songLikeRepo = {
                         }
                     }
                 });
-                return tx.songLike.create({
+                const like = await tx.songLike.create({
                     data: {
                         user: {
                             connect: {
@@ -70,8 +70,10 @@ export const songLikeRepo = {
                         }
                     }
                 });
+
+                return { like, alreadyLiked: false };
             }
-            return like;
+            return { like, alreadyLiked: true };
         });
     },
 
@@ -81,7 +83,7 @@ export const songLikeRepo = {
                 where: { userId, songId }
             });
             if (!like) {
-                return;
+                return false;
             }
             await tx.songLike.delete({
                 where: {
@@ -99,6 +101,7 @@ export const songLikeRepo = {
                     }
                 }
             });
+            return true;
         });
     }
 };

@@ -21,3 +21,29 @@ export type RedisSetAddDto = {
     key: string;
     members: string[];
 };
+
+export type RedisZSetIncreaseDto = {
+    namespace: string;
+    key: string;
+    member: string;
+    value: number;
+};
+
+export type RedisZSetGetScoreDto = {
+    namespace: string;
+    key: string;
+    member: string;
+};
+
+export type RedisZSetRangeDto = {
+    namespace: string;
+    key: string;
+    start: number;
+    end: number;
+};
+
+export type RedisZSetDeleteMembersDto = {
+    namespace: string;
+    key: string;
+    members: string[];
+};
