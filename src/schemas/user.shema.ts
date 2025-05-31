@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { userProfileSchema } from "./auth.schema.js";
+import { booleanSchema } from "@/utils/zod.js";
 
 export const updateUserProfileSchema = userProfileSchema.partial();
 
@@ -27,7 +28,8 @@ export const getUserLikedSongsQuerySchema = z.object({
         .number({ message: "The offset must be an integer" })
         .int("The offset must be an integer")
         .nonnegative("The offset must not be negative")
-        .optional()
+        .optional(),
+    userProfiles: booleanSchema.optional()
 });
 
 export const getUserLikedAlbumsQuerySchema = z.object({
@@ -40,5 +42,6 @@ export const getUserLikedAlbumsQuerySchema = z.object({
         .number({ message: "The offset must be an integer" })
         .int("The offset must be an integer")
         .nonnegative("The offset must not be negative")
-        .optional()
+        .optional(),
+    userProfiles: booleanSchema.optional()
 });

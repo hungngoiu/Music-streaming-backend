@@ -23,6 +23,7 @@ export type GetUserLikedSongDto = { userId: string } & {
     options: {
         limit: number;
         offset: number;
+        userProfiles: boolean;
     };
 };
 
@@ -30,5 +31,6 @@ export type GetUserLikedAlbumDto = { userId: string } & {
     options: {
         limit: number;
         offset: number;
+        userProfiles: boolean;
     };
 };

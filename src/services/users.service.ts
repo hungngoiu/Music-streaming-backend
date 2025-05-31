@@ -188,7 +188,7 @@ export const userService: UserServiceInterface = {
         args: GetUserLikedSongDto
     ): Promise<SongDto[]> => {
         const { options, userId } = args;
-        const { limit, offset } = options;
+        const { limit, offset, userProfiles } = options;
         const user = userRepo.getOneByFilter({ id: userId });
         if (!user) {
             throw new AuthenticationError(
@@ -201,7 +201,15 @@ export const userService: UserServiceInterface = {
                 createdAt: Prisma.SortOrder.desc
             },
             include: {
-                song: true
+                song: {
+                    include: {
+                        user: {
+                            include: {
+                                userProfile: userProfiles
+                            }
+                        }
+                    }
+                }
             },
             take: limit,
             skip: offset
@@ -240,7 +248,7 @@ export const userService: UserServiceInterface = {
         args: GetUserLikedAlbumDto
     ): Promise<AlbumDto[]> => {
         const { options, userId } = args;
-        const { limit, offset } = options;
+        const { limit, offset, userProfiles } = options;
         const user = userRepo.getOneByFilter({ id: userId });
         if (!user) {
             throw new AuthenticationError(
@@ -253,7 +261,15 @@ export const userService: UserServiceInterface = {
                 createdAt: Prisma.SortOrder.desc
             },
             include: {
-                album: true
+                album: {
+                    include: {
+                        user: {
+                            include: {
+                                userProfile: userProfiles
+                            }
+                        }
+                    }
+                }
             },
             take: limit,
             skip: offset

@@ -102,10 +102,10 @@ export const userController = {
             const queries = req.query as z.infer<
                 typeof getUserLikedSongsQuerySchema
             >;
-            const { limit = 10, offset = 0 } = queries;
+            const { limit = 10, offset = 0, userProfiles = false } = queries;
             const songs = await userService.getUserLikedSongs({
                 userId: user.id,
-                options: { limit, offset }
+                options: { limit, offset, userProfiles }
             });
             res.status(StatusCodes.OK).json({
                 status: "success",
@@ -124,10 +124,10 @@ export const userController = {
             const queries = req.query as z.infer<
                 typeof getUserLikedAlbumsQuerySchema
             >;
-            const { limit = 10, offset = 0 } = queries;
+            const { limit = 10, offset = 0, userProfiles = false } = queries;
             const albums = await userService.getUserLikedAlbums({
                 userId: user.id,
-                options: { limit, offset }
+                options: { limit, offset, userProfiles }
             });
             res.status(StatusCodes.OK).json({
                 status: "success",
