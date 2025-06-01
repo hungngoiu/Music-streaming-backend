@@ -32,11 +32,11 @@ router.post(
     albumRouteConfig.createAlbum,
     verifyTokenMiddleware({ type: "at" }),
     isVerifiedUserMiddleware,
-    dataValidation(createAlbumSchema, "body"),
     singleFileUpload({
         fieldName: "coverImage",
         allowedExtensions: [".jpg", "jpeg", ".png"]
     }),
+    dataValidation(createAlbumSchema, "body"),
     albumController.createAlbum
 );
 

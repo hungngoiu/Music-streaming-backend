@@ -28,7 +28,6 @@ router.post(
     songRouteConfig.uploadSong,
     verifyTokenMiddleware({ type: "at" }),
     isVerifiedUserMiddleware,
-    dataValidation(uploadSongSchema, "body"),
     fieldsFileUpload({
         fields: [
             {
@@ -43,7 +42,7 @@ router.post(
             }
         ]
     }),
-    isVerifiedUserMiddleware,
+    dataValidation(uploadSongSchema, "body"),
     songController.uploadSong
 );
 
