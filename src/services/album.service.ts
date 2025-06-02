@@ -88,7 +88,7 @@ export const albumService: AlbumServiceInterface = {
 
         const coverImagePath = await storageService.uploadOne(
             musicsBucketConfigs.name,
-            musicsBucketConfigs.audioFolder.name,
+            musicsBucketConfigs.coverFolder.name,
             coverImgBuffer
         );
         try {
