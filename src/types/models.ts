@@ -27,6 +27,16 @@ export type FullyNestedAlbum = Prisma.AlbumGetPayload<{
     };
 }>;
 
+export type FullyNestedPlaylist = Prisma.PlaylistGetPayload<{
+    include: {
+        user: {
+            include: {
+                userProfile: true;
+            };
+        };
+    };
+}>;
+
 type IsScalar<T> = T extends
     | string
     | number

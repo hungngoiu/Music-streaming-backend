@@ -1,0 +1,12 @@
+model Playlist {
+    id             String  @id @default(uuid())
+    name           String
+    coverImagePath String? @map("cover_image_path")
+    isPublic       Boolean @default(false) @map("is_public")
+    userId         String  @map("user_id")
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
+    @@map("playlist")
+}

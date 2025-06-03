@@ -4,11 +4,11 @@ A backend service for a music streaming application, developed using TypeScript.
 
 ## 🚀 Features
 
-- User authentication and authorization using JWT
-- Music streaming capabilities
-- Playlist and album creation and management
-- Search functionality for tracks and artists
-- Likes song and albums
+-   User authentication and authorization using JWT
+-   Music streaming capabilities
+-   Playlist and album creation and management
+-   Search functionality for tracks and artists
+-   Likes song and albums
 
 ## 🛠️ Languages and Tools
 
@@ -49,38 +49,44 @@ A backend service for a music streaming application, developed using TypeScript.
 
 ### Prerequisites
 
-- Node.js (v14 or higher)
-- PostgreSQL database
-- Supabase project
-- Redis cloud database
+-   Node.js (v14 or higher)
+-   PostgreSQL database
+-   Supabase project
+-   Redis cloud database
+
 ### Installation
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/hungngoiu/Music-streaming-backend.git
-   cd Music-streaming-backend
-   ```
+
+    ```bash
+    git clone https://github.com/hungngoiu/Music-streaming-backend.git
+    cd Music-streaming-backend
+    ```
 
 2. Install dependencies:
-   ```bash
-   npm install
-   ```
+
+    ```bash
+    npm install
+    ```
 
 3. Configure environment variables:
-   ```bash
-   cp .env.example .env
-   ```
-   Update the `.env` file with your database credentials and other necessary configurations.
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    Update the `.env` file with your database credentials and other necessary configurations.
 
 4. Set up the database:
-   ```bash
-   npx prisma migrate dev
-   ```
+
+    ```bash
+    npx prisma migrate dev
+    ```
 
 5. Start the development server:
-   ```bash
-   npm run start:dev
-   ```
+    ```bash
+    npm run start:dev
+    ```
 
 ## 📄 API Documentation
 

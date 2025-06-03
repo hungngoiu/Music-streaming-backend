@@ -4,3 +4,4 @@ export * from "./album.dto.js";
 export * from "./song.dto.js";
 export * from "./user.dto.js";
 export * from "./feed.dto.js";
+export * from "./playlist.dto.js";

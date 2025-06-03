@@ -1,10 +1,9 @@
 import { Album } from "@prisma/client";
-import { UserDto, UserProfileDto } from "./user.dto.js";
+import { UserDto } from "./user.dto.js";
 import { SongDto } from "./song.dto.js";
 
 export type AlbumDto = Omit<Album, "coverImagePath"> & {
     coverImageUrl: string | null;
-    userProfile?: UserProfileDto;
     songs?: SongDto[];
     user?: UserDto;
 };

@@ -66,7 +66,7 @@ export const storageService: StorageServiceInterface = {
             .upload(filePath, buffer, { contentType: mime });
         if (error) {
             logger.warn(
-                `Cannot upload ${filePath} in bucket ${bucket}. Error: ${error}`
+                `Cannot upload ${filePath} in bucket ${bucket}. Error: ${error.message}`
             );
             throw new CustomError(
                 error.message,
@@ -82,7 +82,7 @@ export const storageService: StorageServiceInterface = {
             .remove([filePath]);
         if (error) {
             logger.warn(
-                `Cannot delete ${filePath} in bucket ${bucket}. Error: ${error}`
+                `Cannot delete ${filePath} in bucket ${bucket}. Error: ${error.message}`
             );
             throw new CustomError(
                 error.message,
@@ -169,7 +169,7 @@ export const storageService: StorageServiceInterface = {
             .createSignedUrl(filePath, duration);
         if (error) {
             logger.warn(
-                `Cannot generate url for ${filePath} in bucket ${bucket}. Error: ${error}`
+                `Cannot generate url for ${filePath} in bucket ${bucket}. Error: ${error.message}`
             );
         }
         return data ? data.signedUrl : null;

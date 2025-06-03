@@ -7,6 +7,7 @@ import { storageService } from "@/services/index.js";
 import { UserDto, UserProfileDto } from "@/types/dto/user.dto.js";
 import {
     FullyNestedAlbum,
+    FullyNestedPlaylist,
     FullyNestedSong,
     FullyNestedUser,
     OptionalRelationsDeep
@@ -15,6 +16,7 @@ import { omitPropsFromObject } from "./object.js";
 import { AlbumDto, SongDto } from "@/types/dto/index.js";
 import { cacheOrFetch } from "./caching.js";
 import { namespaces } from "@/configs/redis.config.js";
+import { PlaylistDto } from "@/types/dto/playlist.dto.js";
 
 export const userModelToDto = async (
     user: OptionalRelationsDeep<FullyNestedUser>
@@ -114,6 +116,36 @@ export const albumModelToDto = async (
         ...omitPropsFromObject(album, ["coverImagePath", "songs", "user"]),
         user,
         songs,
+        coverImageUrl
+    };
+};
+
+export const playlistModelToDto = async (
+    playlist: OptionalRelationsDeep<FullyNestedPlaylist>
+): Promise<PlaylistDto> => {
+    let user: UserDto | undefined;
+    if (playlist.user) {
+        user = await userModelToDto(playlist.user);
+    }
+
+    let coverImageUrl: string | null = null;
+    if (playlist.coverImagePath) {
+        coverImageUrl = (
+            await cacheOrFetch(
+                namespaces.Filepath,
+                `${musicsBucketConfigs.name}:${playlist.coverImagePath}`,
+                () =>
+                    storageService.generateUrl(
+                        musicsBucketConfigs.name,
+                        playlist.coverImagePath!,
+                        envConfig.IMAGE_URL_EXP
+                    )
+            )
+        ).data;
+    }
+    return {
+        ...omitPropsFromObject(playlist, ["coverImagePath", "user"]),
+        user,
         coverImageUrl
     };
 };
