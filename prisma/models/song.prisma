@@ -9,9 +9,10 @@ model Song {
     albumOrder     Int?    @map("album_order")
     likesCount     Int     @default(0)
 
-    user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-    album Album?     @relation(fields: [albumId], references: [id])
-    likes SongLike[]
+    user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+    album        Album?         @relation(fields: [albumId], references: [id])
+    likes        SongLike[]
+    playlistSong PlaylistSong[]
 
     @@unique([albumId, albumOrder])
     @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)

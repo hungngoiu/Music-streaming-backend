@@ -5,8 +5,22 @@ model Playlist {
     isPublic       Boolean @default(false) @map("is_public")
     userId         String  @map("user_id")
 
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+    playlistSong PlaylistSong[]
 
     @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
-    @@map("playlist")
+    @@map("playlists")
+}
+
+model PlaylistSong {
+    playlistId    String
+    songId        String
+    playlistOrder Int
+
+    playlist Playlist @relation(fields: [playlistId], references: [id])
+    song     Song     @relation(fields: [songId], references: [id])
+
+    @@id([playlistId, songId])
+    @@unique([playlistId, playlistOrder])
+    @@map("playlist_song")
 }

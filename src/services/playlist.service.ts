@@ -4,8 +4,12 @@ import sharp from "sharp";
 import { storageService } from "./storage.service.js";
 import { Prisma } from "@prisma/client";
 import { StatusCodes } from "http-status-codes";
-import { AuthenticationError } from "@/errors/index.js";
-import { playlistRepo } from "@/repositories/index.js";
+import {
+    AuthenticationError,
+    AuthorizationError,
+    CustomError
+} from "@/errors/index.js";
+import { playlistRepo, songRepo } from "@/repositories/index.js";
 import { playlistModelToDto } from "@/utils/modelToDto.js";
 
 interface PlaylistServiceInterface {
@@ -14,6 +18,12 @@ interface PlaylistServiceInterface {
         userId: string,
         coverImg?: Express.Multer.File
     ) => Promise<PlaylistDto>;
+
+    addSong: (
+        playlistId: string,
+        songId: string,
+        userId: string
+    ) => Promise<void>;
 }
 
 export const playlistService: PlaylistServiceInterface = {
@@ -78,5 +88,20 @@ export const playlistService: PlaylistServiceInterface = {
             }
             throw err;
         }
+    },
+
+    addSong: async (playlistId: string, songId: string, userId: string) => {
+        const playlist = await playlistRepo.getOneByFilter({ id: playlistId });
+        const song = await songRepo.getOneByFilter({ id: songId });
+        if (!playlist) {
+            throw new CustomError("Playlist not found", StatusCodes.NOT_FOUND);
+        }
+        if (!song) {
+            throw new CustomError("Song not found", StatusCodes.NOT_FOUND);
+        }
+        if (userId != playlist.userId) {
+            throw new AuthorizationError("Playlist not belong to user");
+        }
+        await playlistRepo.addSong(playlistId, songId);
     }
 };
